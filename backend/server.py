@@ -459,10 +459,10 @@ Respond with ONLY the JSON object, nothing else."""},
             }
 
 class WriterAgent(BytezAgent):
-    """Generates documentation - Uses Qwen3 Coder"""
+    """Generates documentation - Uses Qwen2.5 Coder"""
     
     def __init__(self):
-        super().__init__(model_id="Qwen/Qwen3-Coder-30B-A3B-Instruct")
+        super().__init__(model_id="Qwen/Qwen2.5-Coder-0.5B-Instruct")
     
     async def write(self, source_code: str, context: Dict[str, Any], language: str, style: str) -> Dict[str, Any]:
         style_guide = {
