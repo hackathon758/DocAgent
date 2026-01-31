@@ -21,6 +21,7 @@ class BackendTester:
         self.client = httpx.AsyncClient(timeout=30.0)
         self.test_results = []
         self.auth_token = None
+        self.job_id = None  # Store job_id for repository documentation tests
         # Use the exact test data from the review request
         self.test_user_email = "testuser@example.com"
         self.test_user_password = "TestPass123!"
