@@ -2176,6 +2176,7 @@ app.include_router(jobs_router)
 app.include_router(analytics_router)
 app.include_router(orgs_router)
 app.include_router(models_router)
+app.include_router(repo_docs_router)
 
 # ========================
 # MIDDLEWARE
