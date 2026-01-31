@@ -1173,31 +1173,174 @@ async def get_coverage_stats(current_user: dict = Depends(get_current_user)):
     }
 
 # ========================
-# AI MODELS ROUTES
+# AI MODELS ROUTES - Ollama Integration for Local Models
 # ========================
 
 models_router = APIRouter(prefix="/api/models", tags=["AI Models"])
 
+# Available free models for download via Ollama
+AVAILABLE_LOCAL_MODELS = [
+    {
+        "id": "llama3.2:1b",
+        "name": "Llama 3.2 1B",
+        "description": "Meta's smallest Llama 3.2 model - fast and efficient for code analysis",
+        "size": "1.3GB",
+        "tasks": ["code-analysis", "chat", "documentation"],
+        "recommended_for": ["Reader Agent", "Verifier Agent"],
+        "free": True
+    },
+    {
+        "id": "llama3.2:3b",
+        "name": "Llama 3.2 3B",
+        "description": "Balanced Llama 3.2 model - good quality and speed",
+        "size": "2.0GB",
+        "tasks": ["code-analysis", "documentation", "chat"],
+        "recommended_for": ["Writer Agent", "Searcher Agent"],
+        "free": True
+    },
+    {
+        "id": "codellama:7b",
+        "name": "Code Llama 7B",
+        "description": "Specialized for code understanding and generation",
+        "size": "3.8GB",
+        "tasks": ["code-analysis", "code-generation", "documentation"],
+        "recommended_for": ["Reader Agent", "Writer Agent"],
+        "free": True
+    },
+    {
+        "id": "qwen2.5-coder:1.5b",
+        "name": "Qwen 2.5 Coder 1.5B",
+        "description": "Alibaba's code-optimized model - excellent for documentation",
+        "size": "1.0GB",
+        "tasks": ["code-analysis", "documentation", "code-generation"],
+        "recommended_for": ["All Agents"],
+        "free": True
+    },
+    {
+        "id": "qwen2.5-coder:7b",
+        "name": "Qwen 2.5 Coder 7B",
+        "description": "Larger Qwen coder model for better quality documentation",
+        "size": "4.7GB",
+        "tasks": ["code-analysis", "documentation", "code-generation"],
+        "recommended_for": ["Writer Agent", "Diagram Agent"],
+        "free": True
+    },
+    {
+        "id": "deepseek-coder:1.3b",
+        "name": "DeepSeek Coder 1.3B",
+        "description": "Efficient coding model from DeepSeek",
+        "size": "0.8GB",
+        "tasks": ["code-analysis", "code-generation"],
+        "recommended_for": ["Reader Agent"],
+        "free": True
+    },
+    {
+        "id": "deepseek-coder:6.7b",
+        "name": "DeepSeek Coder 6.7B",
+        "description": "Powerful coding model for complex documentation tasks",
+        "size": "3.8GB",
+        "tasks": ["code-analysis", "code-generation", "documentation"],
+        "recommended_for": ["All Agents"],
+        "free": True
+    },
+    {
+        "id": "phi3:mini",
+        "name": "Phi-3 Mini",
+        "description": "Microsoft's compact but powerful model",
+        "size": "2.3GB",
+        "tasks": ["chat", "documentation", "reasoning"],
+        "recommended_for": ["Verifier Agent"],
+        "free": True
+    },
+    {
+        "id": "mistral:7b",
+        "name": "Mistral 7B",
+        "description": "High-quality open model from Mistral AI",
+        "size": "4.1GB",
+        "tasks": ["chat", "documentation", "code-analysis"],
+        "recommended_for": ["Writer Agent", "Diagram Agent"],
+        "free": True
+    },
+    {
+        "id": "gemma2:2b",
+        "name": "Gemma 2 2B",
+        "description": "Google's efficient open model",
+        "size": "1.6GB",
+        "tasks": ["chat", "documentation"],
+        "recommended_for": ["Searcher Agent"],
+        "free": True
+    }
+]
+
+# Track download progress
+model_download_progress: Dict[str, Dict[str, Any]] = {}
+
+async def check_ollama_installed() -> bool:
+    """Check if Ollama is installed and running"""
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.get("http://localhost:11434/api/tags")
+            return response.status_code == 200
+    except:
+        return False
+
+async def get_installed_models() -> List[Dict[str, Any]]:
+    """Get list of models installed in Ollama"""
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get("http://localhost:11434/api/tags")
+            if response.status_code == 200:
+                data = response.json()
+                return data.get("models", [])
+    except Exception as e:
+        logger.error(f"Error getting Ollama models: {e}")
+    return []
+
 @models_router.get("")
 async def list_ai_models():
     """Get available AI models for documentation generation"""
+    ollama_installed = await check_ollama_installed()
+    installed_models = []
+    
+    if ollama_installed:
+        installed_models = await get_installed_models()
+    
+    installed_names = [m.get("name", "").split(":")[0] for m in installed_models]
+    
+    # Mark which models are installed
+    local_models = []
+    for model in AVAILABLE_LOCAL_MODELS:
+        model_copy = model.copy()
+        model_base = model["id"].split(":")[0]
+        model_copy["installed"] = any(model_base in name or model["id"] in name for name in [m.get("name", "") for m in installed_models])
+        model_copy["downloading"] = model["id"] in model_download_progress and model_download_progress[model["id"]].get("status") == "downloading"
+        if model_copy["downloading"]:
+            model_copy["download_progress"] = model_download_progress[model["id"]].get("progress", 0)
+        local_models.append(model_copy)
+    
     return {
-        "models": [
+        "ollama_installed": ollama_installed,
+        "ollama_url": "http://localhost:11434",
+        "local_models": local_models,
+        "installed_models": installed_models,
+        "cloud_models": [
             {
                 "id": "describeai/gemini",
-                "name": "DescribeAI Gemini",
-                "description": "High-quality text generation model for documentation writing",
+                "name": "DescribeAI Gemini (Cloud)",
+                "description": "High-quality text generation model via Bytez API",
                 "tasks": ["text-generation", "documentation", "diagrams"],
                 "status": "available",
-                "free": True
+                "free": True,
+                "cloud": True
             },
             {
                 "id": "MesozoicMetallurgist/llam-Proterozoic",
-                "name": "Llam Proterozoic",
-                "description": "Open-source Llama-based model for code analysis",
+                "name": "Llam Proterozoic (Cloud)",
+                "description": "Open-source Llama-based model via Bytez API",
                 "tasks": ["code-analysis", "verification", "chat"],
                 "status": "available",
-                "free": True
+                "free": True,
+                "cloud": True
             }
         ],
         "agent_assignments": {
@@ -1211,11 +1354,165 @@ async def list_ai_models():
 
 @models_router.get("/status")
 async def get_models_status():
-    """Check status of AI models"""
+    """Check status of AI models and Ollama"""
+    ollama_installed = await check_ollama_installed()
+    installed_models = await get_installed_models() if ollama_installed else []
+    
     return {
         "bytez_configured": bool(BYTEZ_API_KEY),
-        "api_url": BYTEZ_API_URL,
+        "bytez_api_url": BYTEZ_API_URL,
+        "ollama_installed": ollama_installed,
+        "ollama_running": ollama_installed,
+        "ollama_url": "http://localhost:11434",
+        "installed_model_count": len(installed_models),
         "models_available": True
+    }
+
+@models_router.post("/download/{model_id:path}")
+async def download_model(model_id: str, background_tasks: BackgroundTasks):
+    """Start downloading a model via Ollama"""
+    ollama_installed = await check_ollama_installed()
+    
+    if not ollama_installed:
+        raise HTTPException(
+            status_code=400, 
+            detail="Ollama is not installed or not running. Please install Ollama first: https://ollama.ai"
+        )
+    
+    # Check if already downloading
+    if model_id in model_download_progress and model_download_progress[model_id].get("status") == "downloading":
+        return {"message": "Download already in progress", "model_id": model_id}
+    
+    # Initialize progress tracking
+    model_download_progress[model_id] = {
+        "status": "downloading",
+        "progress": 0,
+        "started_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # Start background download
+    background_tasks.add_task(download_model_task, model_id)
+    
+    return {
+        "message": f"Started downloading {model_id}",
+        "model_id": model_id,
+        "status": "downloading"
+    }
+
+async def download_model_task(model_id: str):
+    """Background task to download model via Ollama"""
+    try:
+        async with httpx.AsyncClient(timeout=None) as client:
+            async with client.stream(
+                "POST",
+                "http://localhost:11434/api/pull",
+                json={"name": model_id, "stream": True},
+                timeout=None
+            ) as response:
+                async for line in response.aiter_lines():
+                    if line:
+                        try:
+                            data = json.loads(line)
+                            if "completed" in data and "total" in data:
+                                progress = int((data["completed"] / data["total"]) * 100)
+                                model_download_progress[model_id]["progress"] = progress
+                            if data.get("status") == "success":
+                                model_download_progress[model_id] = {
+                                    "status": "completed",
+                                    "progress": 100,
+                                    "completed_at": datetime.now(timezone.utc).isoformat()
+                                }
+                                break
+                        except json.JSONDecodeError:
+                            pass
+    except Exception as e:
+        logger.error(f"Error downloading model {model_id}: {e}")
+        model_download_progress[model_id] = {
+            "status": "failed",
+            "error": str(e)
+        }
+
+@models_router.get("/download/{model_id:path}/progress")
+async def get_download_progress(model_id: str):
+    """Get download progress for a model"""
+    if model_id not in model_download_progress:
+        return {"status": "not_started", "progress": 0}
+    return model_download_progress[model_id]
+
+@models_router.delete("/{model_id:path}")
+async def delete_model(model_id: str):
+    """Delete a downloaded model from Ollama"""
+    ollama_installed = await check_ollama_installed()
+    
+    if not ollama_installed:
+        raise HTTPException(status_code=400, detail="Ollama is not running")
+    
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.delete(
+                "http://localhost:11434/api/delete",
+                json={"name": model_id}
+            )
+            if response.status_code == 200:
+                return {"message": f"Model {model_id} deleted successfully"}
+            else:
+                raise HTTPException(status_code=response.status_code, detail="Failed to delete model")
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@models_router.post("/chat/{model_id:path}")
+async def chat_with_model(model_id: str, message: Dict[str, str]):
+    """Chat with a local Ollama model"""
+    ollama_installed = await check_ollama_installed()
+    
+    if not ollama_installed:
+        raise HTTPException(status_code=400, detail="Ollama is not running")
+    
+    try:
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            response = await client.post(
+                "http://localhost:11434/api/generate",
+                json={
+                    "model": model_id,
+                    "prompt": message.get("content", ""),
+                    "stream": False
+                }
+            )
+            if response.status_code == 200:
+                data = response.json()
+                return {
+                    "response": data.get("response", ""),
+                    "model": model_id,
+                    "done": data.get("done", True)
+                }
+            else:
+                raise HTTPException(status_code=response.status_code, detail="Failed to generate response")
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@models_router.get("/ollama/install-guide")
+async def get_ollama_install_guide():
+    """Get installation instructions for Ollama"""
+    return {
+        "title": "Install Ollama to Run Local AI Models",
+        "description": "Ollama allows you to run powerful AI models locally on your machine for free.",
+        "platforms": {
+            "macos": {
+                "command": "curl -fsSL https://ollama.ai/install.sh | sh",
+                "alternative": "Download from https://ollama.ai/download"
+            },
+            "linux": {
+                "command": "curl -fsSL https://ollama.ai/install.sh | sh"
+            },
+            "windows": {
+                "command": "Download installer from https://ollama.ai/download"
+            }
+        },
+        "after_install": [
+            "Run 'ollama serve' to start the Ollama server",
+            "Return to this page to download and use models"
+        ],
+        "documentation_url": "https://ollama.ai/docs"
     }
 
 # ========================
