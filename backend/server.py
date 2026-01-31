@@ -504,10 +504,10 @@ Respond with ONLY the JSON object, nothing else."""},
             }
 
 class VerifierAgent(BytezAgent):
-    """Verifies documentation quality - Uses Llam Proterozoic"""
+    """Verifies documentation quality - Uses Google Gemma"""
     
     def __init__(self):
-        super().__init__(model_id="MesozoicMetallurgist/llam-Proterozoic")
+        super().__init__(model_id="google/gemma-3-4b-it")
     
     async def verify(self, source_code: str, documentation: Dict[str, Any]) -> Dict[str, Any]:
         messages = [
@@ -517,19 +517,29 @@ class VerifierAgent(BytezAgent):
 3. Clarity (easy to understand)
 4. Examples (practical and correct)
 
-Score each 0-100 and provide overall score. Respond in JSON with:
-- approved: boolean
-- quality_score: number (0-100)
-- evaluation: {accuracy, completeness, clarity, examples}
-- feedback: list of improvement suggestions"""},
+Respond with ONLY a valid JSON object (no markdown, no explanation):
+{
+  "approved": <true or false>,
+  "quality_score": <number 0-100>,
+  "evaluation": {"accuracy": <0-100>, "completeness": <0-100>, "clarity": <0-100>, "examples": <0-100>},
+  "feedback": ["<improvement suggestion 1>", "<improvement suggestion 2>"]
+}
+
+Respond with ONLY the JSON object, nothing else."""},
             {"role": "user", "content": f"Verify this documentation:\n\nCode:\n```\n{source_code}\n```\n\nDocumentation:\n{json.dumps(documentation)}"}
         ]
         
-        response = await self.generate(messages)
+        response = await self.generate(messages, max_tokens=500)
         
         try:
-            return json.loads(response)
+            clean_response = response.strip()
+            if "```json" in clean_response:
+                clean_response = clean_response.split("```json")[1].split("```")[0].strip()
+            elif "```" in clean_response:
+                clean_response = clean_response.split("```")[1].split("```")[0].strip()
+            return json.loads(clean_response)
         except:
+            logger.warning(f"Failed to parse Verifier response as JSON: {response[:200]}")
             return {
                 "approved": True,
                 "quality_score": 85.0,
