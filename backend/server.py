@@ -69,6 +69,10 @@ JWT_SECRET = os.environ.get('JWT_SECRET', 'docagent-secret-key-change-in-product
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24
 
+# GitHub OAuth Configuration
+GITHUB_CLIENT_ID = os.environ.get('GITHUB_CLIENT_ID', '')
+GITHUB_CLIENT_SECRET = os.environ.get('GITHUB_CLIENT_SECRET', '')
+
 # Create the main app
 app = FastAPI(title="DocAgent API", version="1.0.0")
 
