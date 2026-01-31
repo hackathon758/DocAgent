@@ -378,7 +378,10 @@ Respond in JSON format."""},
             }
 
 class SearcherAgent(BytezAgent):
-    """Gathers context for documentation"""
+    """Gathers context for documentation - Uses DescribeAI Gemini"""
+    
+    def __init__(self):
+        super().__init__(model_id="describeai/gemini")
     
     async def search(self, code_analysis: Dict[str, Any], language: str) -> Dict[str, Any]:
         messages = [
