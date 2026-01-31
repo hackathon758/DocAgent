@@ -536,8 +536,8 @@ class BackendTester:
             await self.log_result(test_name, False, f"Exception: {str(e)}")
 
     async def run_all_tests(self):
-        """Run all backend tests for email-based authentication"""
-        print(f"🚀 Starting Email-Based Authentication Tests")
+        """Run all backend tests for email-based authentication and repository documentation"""
+        print(f"🚀 Starting Backend API Tests")
         print(f"Backend URL: {self.base_url}")
         print(f"Test User: {self.test_user_email}")
         print("=" * 60)
@@ -550,11 +550,28 @@ class BackendTester:
         await self.test_user_login()
         await self.test_get_current_user()
         
-        # Test error cases
+        # Test error cases for authentication
         await self.test_duplicate_registration()
         await self.test_login_wrong_password()
         await self.test_me_without_token()
         await self.test_me_with_invalid_token()
+        
+        # Test repository documentation endpoints (requires authentication)
+        print("\n📚 Testing Repository Documentation Endpoints...")
+        await self.test_repo_documentation_start()
+        
+        # Wait a moment for job to initialize before checking status
+        if hasattr(self, 'job_id') and self.job_id:
+            import asyncio
+            await asyncio.sleep(2)  # Give the job a moment to start
+        
+        await self.test_repo_documentation_status()
+        await self.test_repo_documentation_preview()
+        await self.test_repo_documentation_export()
+        
+        # Test error cases for repository documentation
+        await self.test_repo_documentation_invalid_job_id()
+        await self.test_repo_documentation_invalid_repo_url()
         
         # Summary
         print("=" * 60)
