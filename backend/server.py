@@ -447,10 +447,10 @@ Respond with ONLY the JSON object, nothing else."""},
             }
 
 class WriterAgent(BytezAgent):
-    """Generates documentation - Uses DescribeAI Gemini"""
+    """Generates documentation - Uses Qwen3 Coder"""
     
     def __init__(self):
-        super().__init__(model_id="describeai/gemini")
+        super().__init__(model_id="Qwen/Qwen3-Coder-30B-A3B-Instruct")
     
     async def write(self, source_code: str, context: Dict[str, Any], language: str, style: str) -> Dict[str, Any]:
         style_guide = {
@@ -463,22 +463,30 @@ class WriterAgent(BytezAgent):
         messages = [
             {"role": "system", "content": f"""You are a technical documentation writer. Generate comprehensive documentation using {style_guide.get(style, style_guide['google'])}.
 
-Include:
-1. A complete docstring
-2. Markdown documentation with sections
-3. Usage examples
-4. Cross-references if applicable
+Respond with ONLY a valid JSON object (no markdown wrapping, no explanation):
+{{
+  "docstring": "<complete docstring with proper formatting>",
+  "markdown": "<full markdown documentation with Overview, Parameters, Returns, Example sections>",
+  "examples": ["<example 1>", "<example 2>"]
+}}
 
-Respond in JSON format with keys: docstring, markdown, examples"""},
+The docstring should be ready to insert directly into the code. Include proper line breaks using \\n.
+Respond with ONLY the JSON object, nothing else."""},
             {"role": "user", "content": f"Write documentation for this {language} code:\n\n```{language}\n{source_code}\n```\n\nContext: {json.dumps(context)}"}
         ]
         
-        response = await self.generate(messages, max_tokens=3000)
+        response = await self.generate(messages, max_tokens=2000)
         
         try:
-            return json.loads(response)
+            clean_response = response.strip()
+            if "```json" in clean_response:
+                clean_response = clean_response.split("```json")[1].split("```")[0].strip()
+            elif clean_response.startswith("```"):
+                clean_response = clean_response.split("```")[1].split("```")[0].strip()
+            return json.loads(clean_response)
         except:
-            # Generate a structured response
+            logger.warning(f"Failed to parse Writer response as JSON: {response[:300]}")
+            # Generate a structured response from the raw text
             func_name = "function"
             if "def " in source_code:
                 parts = source_code.split("def ")[1].split("(")
@@ -491,7 +499,7 @@ Respond in JSON format with keys: docstring, markdown, examples"""},
             
             return {
                 "docstring": f'"""\n{func_name}: Auto-generated documentation.\n\nThis function performs operations as defined in the source code.\n\nArgs:\n    See source code for parameters.\n\nReturns:\n    See source code for return value.\n"""',
-                "markdown": f"# {func_name}\n\n## Overview\n\nThis function is part of the codebase and performs specific operations.\n\n## Usage\n\n```{language}\n# Example usage\nresult = {func_name}()\n```\n\n## Parameters\n\nSee source code for detailed parameters.\n\n## Returns\n\nSee source code for return type.",
+                "markdown": f"# {func_name}\n\n## Overview\n\nThis function is part of the codebase.\n\n## Usage\n\n```{language}\nresult = {func_name}()\n```",
                 "examples": [f"result = {func_name}()"]
             }
 
