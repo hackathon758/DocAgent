@@ -1437,11 +1437,11 @@ async def list_ai_models():
             }
         ],
         "agent_assignments": {
-            "reader": "MesozoicMetallurgist/llam-Proterozoic",
-            "searcher": "describeai/gemini",
-            "writer": "describeai/gemini",
-            "verifier": "MesozoicMetallurgist/llam-Proterozoic",
-            "diagram": "describeai/gemini"
+            "reader": "Qwen/Qwen2.5-Coder-0.5B-Instruct",
+            "searcher": "HuggingFaceTB/SmolLM2-1.7B-Instruct",
+            "writer": "Qwen/Qwen2.5-Coder-0.5B-Instruct",
+            "verifier": "HuggingFaceTB/SmolLM2-1.7B-Instruct",
+            "diagram": "Qwen/Qwen2.5-Coder-0.5B-Instruct"
         }
     }
 
