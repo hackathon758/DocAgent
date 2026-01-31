@@ -25,8 +25,24 @@ client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ.get('DB_NAME', 'docagent')]
 
 # Bytez API configuration
-BYTEZ_API_KEY = os.environ.get('BYTEZ_API_KEY', '')
+BYTEZ_API_KEY = os.environ.get('BYTEZ_API_KEY', 'f870a6e293d31c3d1aba40914052d57b')
 BYTEZ_API_URL = "https://api.bytez.com/models/v1"
+
+# Available AI Models via Bytez
+AI_MODELS = {
+    "gemini": {
+        "id": "describeai/gemini",
+        "name": "DescribeAI Gemini",
+        "description": "High-quality text generation model",
+        "tasks": ["text-generation", "documentation"]
+    },
+    "llam-proterozoic": {
+        "id": "MesozoicMetallurgist/llam-Proterozoic", 
+        "name": "Llam Proterozoic",
+        "description": "Open-source Llama-based model for code analysis",
+        "tasks": ["code-analysis", "chat"]
+    }
+}
 
 # JWT Configuration
 JWT_SECRET = os.environ.get('JWT_SECRET', 'docagent-secret-key-change-in-production')
