@@ -377,10 +377,10 @@ class BytezAgent:
         return "Generated content"
 
 class ReaderAgent(BytezAgent):
-    """Analyzes code and determines documentation needs - Uses Qwen3 Coder"""
+    """Analyzes code and determines documentation needs - Uses Qwen2.5 Coder"""
     
     def __init__(self):
-        super().__init__(model_id="Qwen/Qwen3-Coder-30B-A3B-Instruct")
+        super().__init__(model_id="Qwen/Qwen2.5-Coder-0.5B-Instruct")
     
     async def analyze(self, source_code: str, language: str) -> Dict[str, Any]:
         messages = [
