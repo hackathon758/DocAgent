@@ -516,10 +516,10 @@ Respond with ONLY the JSON object, nothing else."""},
             }
 
 class VerifierAgent(BytezAgent):
-    """Verifies documentation quality - Uses Google Gemma"""
+    """Verifies documentation quality - Uses SmolLM2"""
     
     def __init__(self):
-        super().__init__(model_id="google/gemma-3-4b-it")
+        super().__init__(model_id="HuggingFaceTB/SmolLM2-1.7B-Instruct")
     
     async def verify(self, source_code: str, documentation: Dict[str, Any]) -> Dict[str, Any]:
         messages = [
