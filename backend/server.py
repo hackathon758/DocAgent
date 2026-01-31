@@ -1400,19 +1400,37 @@ async def list_ai_models():
         "installed_models": installed_models,
         "cloud_models": [
             {
-                "id": "describeai/gemini",
-                "name": "DescribeAI Gemini (Cloud)",
-                "description": "High-quality text generation model via Bytez API",
-                "tasks": ["text-generation", "documentation", "diagrams"],
+                "id": "Qwen/Qwen2.5-Coder-0.5B-Instruct",
+                "name": "Qwen 2.5 Coder 0.5B (Cloud)",
+                "description": "Fast code-focused model via Bytez API - VERIFIED WORKING",
+                "tasks": ["code-analysis", "documentation", "code-generation"],
                 "status": "available",
                 "free": True,
                 "cloud": True
             },
             {
-                "id": "MesozoicMetallurgist/llam-Proterozoic",
-                "name": "Llam Proterozoic (Cloud)",
-                "description": "Open-source Llama-based model via Bytez API",
-                "tasks": ["code-analysis", "verification", "chat"],
+                "id": "HuggingFaceTB/SmolLM2-1.7B-Instruct",
+                "name": "SmolLM2 1.7B (Cloud)",
+                "description": "Efficient instruction-tuned model via Bytez API - VERIFIED WORKING",
+                "tasks": ["chat", "verification", "reasoning"],
+                "status": "available",
+                "free": True,
+                "cloud": True
+            },
+            {
+                "id": "HuggingFaceTB/SmolLM2-360M-Instruct",
+                "name": "SmolLM2 360M (Cloud)",
+                "description": "Ultra-fast model via Bytez API - VERIFIED WORKING",
+                "tasks": ["chat", "text-generation"],
+                "status": "available",
+                "free": True,
+                "cloud": True
+            },
+            {
+                "id": "microsoft/Phi-3-mini-4k-instruct",
+                "name": "Phi-3 Mini 4K (Cloud)",
+                "description": "Microsoft's efficient reasoning model via Bytez API - VERIFIED WORKING",
+                "tasks": ["chat", "documentation", "reasoning"],
                 "status": "available",
                 "free": True,
                 "cloud": True
