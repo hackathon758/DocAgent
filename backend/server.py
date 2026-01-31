@@ -419,10 +419,10 @@ Respond with ONLY the JSON object, nothing else."""},
             }
 
 class SearcherAgent(BytezAgent):
-    """Gathers context for documentation - Uses Google Gemma"""
+    """Gathers context for documentation - Uses SmolLM2"""
     
     def __init__(self):
-        super().__init__(model_id="google/gemma-3-4b-it")
+        super().__init__(model_id="HuggingFaceTB/SmolLM2-1.7B-Instruct")
     
     async def search(self, code_analysis: Dict[str, Any], language: str) -> Dict[str, Any]:
         messages = [
