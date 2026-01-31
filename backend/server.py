@@ -553,10 +553,10 @@ Respond with ONLY the JSON object, nothing else."""},
             }
 
 class DiagramAgent(BytezAgent):
-    """Generates Mermaid diagrams - Uses DescribeAI Gemini"""
+    """Generates Mermaid diagrams - Uses Qwen3 Coder"""
     
     def __init__(self):
-        super().__init__(model_id="describeai/gemini")
+        super().__init__(model_id="Qwen/Qwen3-Coder-30B-A3B-Instruct")
     
     async def generate_diagram(self, source_code: str, diagram_type: Optional[str] = None) -> Dict[str, Any]:
         messages = [
@@ -567,28 +567,33 @@ Choose the most appropriate diagram type:
 - classDiagram: for class structures
 - stateDiagram: for state machines
 
-Respond in JSON with:
-- diagram_type: string
-- mermaid_code: string (valid Mermaid syntax)
-- description: string"""},
+Respond with ONLY a valid JSON object (no markdown wrapping, no explanation):
+{
+  "diagram_type": "<flowchart|sequenceDiagram|classDiagram|stateDiagram>",
+  "mermaid_code": "<valid Mermaid.js syntax>",
+  "description": "<brief description>"
+}
+
+IMPORTANT: The mermaid_code must be valid Mermaid syntax. Use \\n for newlines.
+Respond with ONLY the JSON object, nothing else."""},
             {"role": "user", "content": f"Create a diagram for:\n```\n{source_code}\n```" + (f"\nPreferred type: {diagram_type}" if diagram_type else "")}
         ]
         
-        response = await self.generate(messages)
+        response = await self.generate(messages, max_tokens=800)
         
         try:
-            return json.loads(response)
+            clean_response = response.strip()
+            if "```json" in clean_response:
+                clean_response = clean_response.split("```json")[1].split("```")[0].strip()
+            elif clean_response.startswith("```"):
+                clean_response = clean_response.split("```")[1].split("```")[0].strip()
+            return json.loads(clean_response)
         except:
+            logger.warning(f"Failed to parse Diagram response as JSON: {response[:300]}")
             # Generate a simple flowchart
             return {
                 "diagram_type": "flowchart",
-                "mermaid_code": """flowchart TD
-    A[Start] --> B{Input Valid?}
-    B -->|Yes| C[Process Data]
-    B -->|No| D[Handle Error]
-    C --> E[Return Result]
-    D --> E
-    E --> F[End]""",
+                "mermaid_code": "flowchart TD\n    A[Start] --> B{Input Valid?}\n    B -->|Yes| C[Process Data]\n    B -->|No| D[Handle Error]\n    C --> E[Return Result]\n    D --> E\n    E --> F[End]",
                 "description": "Auto-generated flowchart showing basic control flow"
             }
 
