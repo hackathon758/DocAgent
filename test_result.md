@@ -179,15 +179,18 @@ backend:
 
   - task: "Repository documentation status endpoint"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Implemented GET /api/repo-documentation/status/{job_id} to get agent progress"
+      - working: true
+        agent: "testing"
+        comment: "✅ WORKING: GET /api/repo-documentation/status/{job_id} returns correct status, current_agent, agents progress (reader, searcher, writer, verifier, diagram), files_processed, total_files, and overall_progress. Error handling for invalid job_id works (returns HTTP 404)."
 
   - task: "Repository documentation DOCX export"
     implemented: true
