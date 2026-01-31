@@ -365,29 +365,40 @@ class BytezAgent:
         return "Generated content"
 
 class ReaderAgent(BytezAgent):
-    """Analyzes code and determines documentation needs - Uses Llam Proterozoic"""
+    """Analyzes code and determines documentation needs - Uses Qwen3 Coder"""
     
     def __init__(self):
-        super().__init__(model_id="MesozoicMetallurgist/llam-Proterozoic")
+        super().__init__(model_id="Qwen/Qwen3-Coder-30B-A3B-Instruct")
     
     async def analyze(self, source_code: str, language: str) -> Dict[str, Any]:
         messages = [
-            {"role": "system", "content": """You are a code analysis expert. Analyze the given code and provide:
-1. Complexity assessment (cyclomatic, cognitive)
-2. Internal dependencies
-3. External dependencies
-4. Architecture type
-5. Documentation needs
-Respond in JSON format."""},
+            {"role": "system", "content": """You are a code analysis expert. Analyze the given code and respond with ONLY a valid JSON object (no markdown, no explanation).
+
+The JSON must have this exact structure:
+{
+  "complexity": {"cyclomatic": <number>, "cognitive": <number>},
+  "dependencies": {"internal": [<strings>], "external": [<strings>]},
+  "architecture_type": "<string>",
+  "documentation_needs": [<strings>]
+}
+
+Respond with ONLY the JSON object, nothing else."""},
             {"role": "user", "content": f"Analyze this {language} code:\n\n```{language}\n{source_code}\n```"}
         ]
         
-        response = await self.generate(messages)
+        response = await self.generate(messages, max_tokens=500)
         
-        # Parse or return default analysis
+        # Parse JSON from response - handle potential markdown wrapping
         try:
-            return json.loads(response)
+            # Try to extract JSON from response
+            clean_response = response.strip()
+            if "```json" in clean_response:
+                clean_response = clean_response.split("```json")[1].split("```")[0].strip()
+            elif "```" in clean_response:
+                clean_response = clean_response.split("```")[1].split("```")[0].strip()
+            return json.loads(clean_response)
         except:
+            logger.warning(f"Failed to parse Reader response as JSON: {response[:200]}")
             return {
                 "complexity": {"cyclomatic": 5, "cognitive": 3},
                 "dependencies": {"internal": [], "external": []},
