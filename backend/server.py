@@ -1173,6 +1173,52 @@ async def get_coverage_stats(current_user: dict = Depends(get_current_user)):
     }
 
 # ========================
+# AI MODELS ROUTES
+# ========================
+
+models_router = APIRouter(prefix="/api/models", tags=["AI Models"])
+
+@models_router.get("")
+async def list_ai_models():
+    """Get available AI models for documentation generation"""
+    return {
+        "models": [
+            {
+                "id": "describeai/gemini",
+                "name": "DescribeAI Gemini",
+                "description": "High-quality text generation model for documentation writing",
+                "tasks": ["text-generation", "documentation", "diagrams"],
+                "status": "available",
+                "free": True
+            },
+            {
+                "id": "MesozoicMetallurgist/llam-Proterozoic",
+                "name": "Llam Proterozoic",
+                "description": "Open-source Llama-based model for code analysis",
+                "tasks": ["code-analysis", "verification", "chat"],
+                "status": "available",
+                "free": True
+            }
+        ],
+        "agent_assignments": {
+            "reader": "MesozoicMetallurgist/llam-Proterozoic",
+            "searcher": "describeai/gemini",
+            "writer": "describeai/gemini",
+            "verifier": "MesozoicMetallurgist/llam-Proterozoic",
+            "diagram": "describeai/gemini"
+        }
+    }
+
+@models_router.get("/status")
+async def get_models_status():
+    """Check status of AI models"""
+    return {
+        "bytez_configured": bool(BYTEZ_API_KEY),
+        "api_url": BYTEZ_API_URL,
+        "models_available": True
+    }
+
+# ========================
 # ORGANIZATIONS ROUTES
 # ========================
 
