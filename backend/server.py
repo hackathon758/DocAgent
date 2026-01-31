@@ -202,6 +202,19 @@ class DiagramRequest(BaseModel):
     component_data: Dict[str, Any]
     diagram_type: Optional[str] = None
 
+class RepoDocumentationRequest(BaseModel):
+    repo_url: str
+    branch: str = "main"
+
+class AgentProgressResponse(BaseModel):
+    job_id: str
+    status: str
+    current_agent: str
+    agents: Dict[str, Dict[str, Any]]
+    files_processed: int
+    total_files: int
+    overall_progress: int
+
 # ========================
 # SUBSCRIPTION TIERS (MOCKED)
 # ========================
