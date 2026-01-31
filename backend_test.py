@@ -273,6 +273,251 @@ class BackendTester:
         except Exception as e:
             await self.log_result(test_name, False, f"Exception: {str(e)}")
 
+    async def test_repo_documentation_start(self):
+        """Test POST /api/repo-documentation/start - Start documentation job"""
+        test_name = "Repository Documentation Start (POST /api/repo-documentation/start)"
+        try:
+            if not self.auth_token:
+                await self.log_result(test_name, False, "No auth token available - skipping test")
+                return
+            
+            headers = {"Authorization": f"Bearer {self.auth_token}"}
+            # Use a small test repository as suggested in the review request
+            repo_data = {
+                "repo_url": "https://github.com/sindresorhus/is",
+                "branch": "main"
+            }
+            
+            response = await self.client.post(f"{self.base_url}/repo-documentation/start", 
+                                            json=repo_data, headers=headers)
+            
+            if response.status_code == 200:
+                data = response.json()
+                
+                # Verify required fields in response
+                required_fields = ["job_id", "total_files"]
+                missing_fields = [field for field in required_fields if field not in data]
+                
+                if missing_fields:
+                    await self.log_result(test_name, False, 
+                        f"Response missing required fields: {missing_fields}", data)
+                    return
+                
+                # Store job_id for subsequent tests
+                self.job_id = data["job_id"]
+                
+                await self.log_result(test_name, True, 
+                    f"Documentation job started successfully. Job ID: {data['job_id']}, Total files: {data['total_files']}", 
+                    {"job_id": data["job_id"], "total_files": data["total_files"]})
+            else:
+                await self.log_result(test_name, False, 
+                    f"HTTP {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            await self.log_result(test_name, False, f"Exception: {str(e)}")
+
+    async def test_repo_documentation_status(self):
+        """Test GET /api/repo-documentation/status/{job_id} - Get job status"""
+        test_name = "Repository Documentation Status (GET /api/repo-documentation/status/{job_id})"
+        try:
+            if not self.auth_token:
+                await self.log_result(test_name, False, "No auth token available - skipping test")
+                return
+            
+            if not hasattr(self, 'job_id') or not self.job_id:
+                await self.log_result(test_name, False, "No job_id available - skipping test")
+                return
+            
+            headers = {"Authorization": f"Bearer {self.auth_token}"}
+            response = await self.client.get(f"{self.base_url}/repo-documentation/status/{self.job_id}", 
+                                           headers=headers)
+            
+            if response.status_code == 200:
+                data = response.json()
+                
+                # Verify required fields in response
+                required_fields = ["status", "current_agent", "agents", "files_processed", "total_files", "overall_progress"]
+                missing_fields = [field for field in required_fields if field not in data]
+                
+                if missing_fields:
+                    await self.log_result(test_name, False, 
+                        f"Response missing required fields: {missing_fields}", data)
+                    return
+                
+                # Verify agents structure
+                if "agents" in data and isinstance(data["agents"], dict):
+                    expected_agents = ["reader", "searcher", "writer", "verifier", "diagram"]
+                    agents_data = data["agents"]
+                    
+                    # Check if at least some expected agents are present
+                    found_agents = [agent for agent in expected_agents if agent in agents_data]
+                    
+                    await self.log_result(test_name, True, 
+                        f"Job status retrieved successfully. Status: {data['status']}, Progress: {data['overall_progress']}%, Agents found: {found_agents}", 
+                        {"status": data["status"], "overall_progress": data["overall_progress"], "agents_count": len(found_agents)})
+                else:
+                    await self.log_result(test_name, False, 
+                        "Agents field is missing or not a dictionary", data)
+            elif response.status_code == 404:
+                await self.log_result(test_name, False, 
+                    f"Job not found (HTTP 404) - this might indicate the job_id is invalid: {response.text}")
+            else:
+                await self.log_result(test_name, False, 
+                    f"HTTP {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            await self.log_result(test_name, False, f"Exception: {str(e)}")
+
+    async def test_repo_documentation_preview(self):
+        """Test GET /api/repo-documentation/preview/{job_id} - Get documentation preview"""
+        test_name = "Repository Documentation Preview (GET /api/repo-documentation/preview/{job_id})"
+        try:
+            if not self.auth_token:
+                await self.log_result(test_name, False, "No auth token available - skipping test")
+                return
+            
+            if not hasattr(self, 'job_id') or not self.job_id:
+                await self.log_result(test_name, False, "No job_id available - skipping test")
+                return
+            
+            headers = {"Authorization": f"Bearer {self.auth_token}"}
+            response = await self.client.get(f"{self.base_url}/repo-documentation/preview/{self.job_id}", 
+                                           headers=headers)
+            
+            if response.status_code == 200:
+                data = response.json()
+                
+                # Verify response structure - should return JSON with documentation array
+                if isinstance(data, dict) and "documentation" in data:
+                    docs = data["documentation"]
+                    if isinstance(docs, list):
+                        await self.log_result(test_name, True, 
+                            f"Documentation preview retrieved successfully. Found {len(docs)} documentation entries", 
+                            {"documentation_count": len(docs)})
+                    else:
+                        await self.log_result(test_name, False, 
+                            "Documentation field is not a list", data)
+                elif isinstance(data, list):
+                    # Direct array response
+                    await self.log_result(test_name, True, 
+                        f"Documentation preview retrieved successfully. Found {len(data)} documentation entries", 
+                        {"documentation_count": len(data)})
+                else:
+                    await self.log_result(test_name, False, 
+                        "Unexpected response format - expected JSON with documentation array", data)
+            elif response.status_code == 404:
+                await self.log_result(test_name, False, 
+                    f"Job not found (HTTP 404) - this might indicate the job_id is invalid: {response.text}")
+            else:
+                await self.log_result(test_name, False, 
+                    f"HTTP {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            await self.log_result(test_name, False, f"Exception: {str(e)}")
+
+    async def test_repo_documentation_export(self):
+        """Test GET /api/repo-documentation/export/{job_id} - Export DOCX file"""
+        test_name = "Repository Documentation Export (GET /api/repo-documentation/export/{job_id})"
+        try:
+            if not self.auth_token:
+                await self.log_result(test_name, False, "No auth token available - skipping test")
+                return
+            
+            if not hasattr(self, 'job_id') or not self.job_id:
+                await self.log_result(test_name, False, "No job_id available - skipping test")
+                return
+            
+            headers = {"Authorization": f"Bearer {self.auth_token}"}
+            response = await self.client.get(f"{self.base_url}/repo-documentation/export/{self.job_id}", 
+                                           headers=headers)
+            
+            if response.status_code == 200:
+                # Verify content type is DOCX
+                content_type = response.headers.get("content-type", "")
+                expected_content_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                
+                if content_type == expected_content_type:
+                    # Verify we got actual file content
+                    content_length = len(response.content)
+                    if content_length > 0:
+                        await self.log_result(test_name, True, 
+                            f"DOCX file exported successfully. Content-Type: {content_type}, Size: {content_length} bytes", 
+                            {"content_type": content_type, "file_size": content_length})
+                    else:
+                        await self.log_result(test_name, False, 
+                            "DOCX file is empty (0 bytes)")
+                else:
+                    await self.log_result(test_name, False, 
+                        f"Incorrect content-type. Expected: {expected_content_type}, Got: {content_type}")
+            elif response.status_code == 404:
+                await self.log_result(test_name, False, 
+                    f"Job not found (HTTP 404) - this might indicate the job_id is invalid: {response.text}")
+            elif response.status_code == 400:
+                # Job might not be completed yet
+                data = response.json() if response.headers.get("content-type", "").startswith("application/json") else {"error": response.text}
+                await self.log_result(test_name, False, 
+                    f"Export not available (HTTP 400) - job might not be completed yet: {data}")
+            else:
+                await self.log_result(test_name, False, 
+                    f"HTTP {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            await self.log_result(test_name, False, f"Exception: {str(e)}")
+
+    async def test_repo_documentation_invalid_job_id(self):
+        """Test repository documentation endpoints with invalid job_id"""
+        test_name = "Repository Documentation with Invalid Job ID (should return 404)"
+        try:
+            if not self.auth_token:
+                await self.log_result(test_name, False, "No auth token available - skipping test")
+                return
+            
+            headers = {"Authorization": f"Bearer {self.auth_token}"}
+            invalid_job_id = "invalid-job-id-12345"
+            
+            # Test status endpoint with invalid job_id
+            response = await self.client.get(f"{self.base_url}/repo-documentation/status/{invalid_job_id}", 
+                                           headers=headers)
+            
+            if response.status_code == 404:
+                await self.log_result(test_name, True, 
+                    f"Correctly returned HTTP 404 for invalid job_id: {invalid_job_id}")
+            else:
+                await self.log_result(test_name, False, 
+                    f"Expected HTTP 404 for invalid job_id, got HTTP {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            await self.log_result(test_name, False, f"Exception: {str(e)}")
+
+    async def test_repo_documentation_invalid_repo_url(self):
+        """Test starting documentation with invalid repository URL"""
+        test_name = "Repository Documentation Start with Invalid URL (should return error)"
+        try:
+            if not self.auth_token:
+                await self.log_result(test_name, False, "No auth token available - skipping test")
+                return
+            
+            headers = {"Authorization": f"Bearer {self.auth_token}"}
+            # Use an invalid repository URL
+            repo_data = {
+                "repo_url": "https://github.com/nonexistent/repository-that-does-not-exist",
+                "branch": "main"
+            }
+            
+            response = await self.client.post(f"{self.base_url}/repo-documentation/start", 
+                                            json=repo_data, headers=headers)
+            
+            if response.status_code in [400, 404]:
+                data = response.json() if response.headers.get("content-type", "").startswith("application/json") else {"error": response.text}
+                await self.log_result(test_name, True, 
+                    f"Correctly rejected invalid repository URL with HTTP {response.status_code}", data)
+            else:
+                await self.log_result(test_name, False, 
+                    f"Expected HTTP 400/404 for invalid repository URL, got HTTP {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            await self.log_result(test_name, False, f"Exception: {str(e)}")
+
     async def test_health_check(self):
         """Test basic API health"""
         test_name = "API Health Check"
