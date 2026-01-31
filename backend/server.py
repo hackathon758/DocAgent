@@ -263,48 +263,60 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
 class BytezAgent:
     """Base agent using Bytez API with free AI models"""
     
-    def __init__(self, model_id: str = "MesozoicMetallurgist/llam-Proterozoic"):
+    def __init__(self, model_id: str = "Qwen/Qwen3-Coder-30B-A3B-Instruct"):
         self.model_id = model_id
         self.api_key = BYTEZ_API_KEY
         self.api_url = BYTEZ_API_URL
     
     async def generate(self, messages: List[Dict[str, str]], temperature: float = 0.7, max_tokens: int = 2000) -> str:
-        """Generate response using Bytez API"""
+        """Generate response using Bytez API v2"""
         if not self.api_key:
+            logger.warning("No Bytez API key configured, using mock response")
             return self._mock_response(messages)
         
         try:
-            async with httpx.AsyncClient(timeout=120.0) as client:
-                # Try the Bytez chat completions API
+            async with httpx.AsyncClient(timeout=180.0) as client:
+                # Bytez API v2 format: POST /models/v2/{modelId}
+                url = f"{self.api_url}/{self.model_id}"
+                logger.info(f"Calling Bytez API: {url}")
+                
                 response = await client.post(
-                    f"{self.api_url}/chat/completions",
+                    url,
                     headers={
-                        "Authorization": f"Bearer {self.api_key}",
+                        "Authorization": self.api_key,
                         "Content-Type": "application/json"
                     },
                     json={
-                        "model": self.model_id,
                         "messages": messages,
-                        "temperature": temperature,
-                        "max_tokens": max_tokens
+                        "params": {
+                            "max_new_tokens": max_tokens,
+                            "temperature": temperature
+                        }
                     }
                 )
                 
                 if response.status_code == 200:
                     data = response.json()
-                    content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
-                    if content:
-                        return content
-                    # Try alternate response format
-                    if "output" in data:
-                        return data["output"]
+                    logger.info(f"Bytez API response received for {self.model_id}")
+                    
+                    # Handle Bytez v2 response format
+                    if data.get("error") is None:
+                        output = data.get("output", {})
+                        if isinstance(output, dict):
+                            content = output.get("content", "")
+                            if content:
+                                return content
+                        elif isinstance(output, str):
+                            return output
+                    
+                    logger.warning(f"Unexpected Bytez response format: {str(data)[:200]}")
                     return self._mock_response(messages)
                 else:
-                    logger.warning(f"Bytez API returned {response.status_code}: {response.text[:200]}")
+                    logger.warning(f"Bytez API returned {response.status_code}: {response.text[:300]}")
                     return self._mock_response(messages)
                     
         except Exception as e:
-            logger.error(f"Bytez API exception: {e}")
+            logger.error(f"Bytez API exception for {self.model_id}: {e}")
             return self._mock_response(messages)
     
     def _mock_response(self, messages: List[Dict[str, str]]) -> str:
