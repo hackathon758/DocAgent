@@ -163,6 +163,9 @@ backend:
         comment: "All regular auth endpoints working correctly: POST /api/auth/register, POST /api/auth/login, GET /api/auth/me. User registration, login, and token validation all functional."
       - working: true
         agent: "testing"
+        comment: "Re-verified - All 8 test scenarios passed with 100% success rate. Registration creates user with JWT token, login returns valid token, /me returns user profile with valid token. Error handling working: duplicate email returns 400, wrong password returns 401, missing/invalid tokens return 403/401."
+      - working: true
+        agent: "testing"
         comment: "COMPREHENSIVE TESTING COMPLETED: All email-based authentication endpoints are working perfectly. Tested 8 scenarios with 100% success rate: 1) User registration with proper response structure, 2) User login with correct token generation, 3) Get current user with valid token, 4) Duplicate registration properly rejected with HTTP 400, 5) Wrong password properly rejected with HTTP 401, 6) Access without token properly rejected with HTTP 403, 7) Access with invalid token properly rejected with HTTP 401, 8) API health check working. All endpoints return proper error codes and response structures as expected."
 
 frontend:
