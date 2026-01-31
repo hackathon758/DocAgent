@@ -456,7 +456,10 @@ Respond in JSON format with keys: docstring, markdown, examples"""},
             }
 
 class VerifierAgent(BytezAgent):
-    """Verifies documentation quality"""
+    """Verifies documentation quality - Uses Llam Proterozoic"""
+    
+    def __init__(self):
+        super().__init__(model_id="MesozoicMetallurgist/llam-Proterozoic")
     
     async def verify(self, source_code: str, documentation: Dict[str, Any]) -> Dict[str, Any]:
         messages = [
