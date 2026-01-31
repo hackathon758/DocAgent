@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Backend API Testing Suite for GitHub OAuth Implementation
-Tests the GitHub OAuth endpoints and existing authentication functionality
+Backend API Testing Suite for Email-Based Authentication
+Tests the email authentication endpoints as requested in the review
 """
 
 import asyncio
@@ -21,8 +21,9 @@ class BackendTester:
         self.client = httpx.AsyncClient(timeout=30.0)
         self.test_results = []
         self.auth_token = None
-        self.test_user_email = f"test_user_{uuid.uuid4().hex[:8]}@example.com"
-        self.test_user_password = "TestPassword123!"
+        # Use the exact test data from the review request
+        self.test_user_email = "testuser@example.com"
+        self.test_user_password = "TestPass123!"
         self.test_user_name = "Test User"
 
     async def log_result(self, test_name: str, success: bool, details: str = "", response_data: dict = None):
