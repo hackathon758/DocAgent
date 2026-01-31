@@ -269,19 +269,19 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
 class BytezAgent:
     """Base agent using Bytez API with free AI models"""
     
-    def __init__(self, model_id: str = "Qwen/Qwen3-Coder-30B-A3B-Instruct"):
+    def __init__(self, model_id: str = "Qwen/Qwen2.5-Coder-0.5B-Instruct"):
         self.model_id = model_id
         self.api_key = BYTEZ_API_KEY
         self.api_url = BYTEZ_API_URL
     
-    async def generate(self, messages: List[Dict[str, str]], temperature: float = 0.7, max_tokens: int = 2000) -> str:
+    async def generate(self, messages: List[Dict[str, str]], temperature: float = 0.5, max_tokens: int = 1000) -> str:
         """Generate response using Bytez API v2"""
         if not self.api_key:
             logger.warning("No Bytez API key configured, using mock response")
             return self._mock_response(messages)
         
         try:
-            async with httpx.AsyncClient(timeout=180.0) as client:
+            async with httpx.AsyncClient(timeout=120.0) as client:
                 # Bytez API v2 format: POST /models/v2/{modelId}
                 url = f"{self.api_url}/{self.model_id}"
                 logger.info(f"Calling Bytez API: {url}")
@@ -309,18 +309,24 @@ class BytezAgent:
                     if data.get("error") is None:
                         output = data.get("output", {})
                         if isinstance(output, dict):
+                            # Chat response format: {"role": "assistant", "content": "..."}
                             content = output.get("content", "")
                             if content:
+                                logger.info(f"Got content from Bytez: {content[:100]}...")
                                 return content
                         elif isinstance(output, str):
+                            logger.info(f"Got string output from Bytez: {output[:100]}...")
                             return output
                     
-                    logger.warning(f"Unexpected Bytez response format: {str(data)[:200]}")
+                    logger.warning(f"Bytez error or unexpected format: {str(data)[:200]}")
                     return self._mock_response(messages)
                 else:
                     logger.warning(f"Bytez API returned {response.status_code}: {response.text[:300]}")
                     return self._mock_response(messages)
                     
+        except httpx.TimeoutException:
+            logger.warning(f"Bytez API timeout for {self.model_id}, using mock")
+            return self._mock_response(messages)
         except Exception as e:
             logger.error(f"Bytez API exception for {self.model_id}: {e}")
             return self._mock_response(messages)
