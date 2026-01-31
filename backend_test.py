@@ -290,20 +290,25 @@ class BackendTester:
             await self.log_result(test_name, False, f"Exception: {str(e)}")
 
     async def run_all_tests(self):
-        """Run all backend tests"""
-        print(f"🚀 Starting Backend API Tests")
+        """Run all backend tests for email-based authentication"""
+        print(f"🚀 Starting Email-Based Authentication Tests")
         print(f"Backend URL: {self.base_url}")
+        print(f"Test User: {self.test_user_email}")
         print("=" * 60)
         
-        # Test GitHub OAuth endpoints
-        await self.test_github_oauth_url_generation()
-        await self.test_github_oauth_callback_invalid_code()
-        
-        # Test existing auth endpoints
+        # Test basic API health first
         await self.test_health_check()
+        
+        # Test main authentication flow
         await self.test_user_registration()
         await self.test_user_login()
         await self.test_get_current_user()
+        
+        # Test error cases
+        await self.test_duplicate_registration()
+        await self.test_login_wrong_password()
+        await self.test_me_without_token()
+        await self.test_me_with_invalid_token()
         
         # Summary
         print("=" * 60)
@@ -324,6 +329,13 @@ class BackendTester:
             for result in self.test_results:
                 if not result["success"]:
                     print(f"  ❌ {result['test']}: {result['details']}")
+        
+        print("\n📋 DETAILED RESULTS:")
+        for result in self.test_results:
+            status = "✅ PASS" if result["success"] else "❌ FAIL"
+            print(f"  {status} {result['test']}")
+            if result["details"]:
+                print(f"      {result['details']}")
         
         await self.client.aclose()
         return self.test_results
