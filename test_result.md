@@ -207,6 +207,18 @@ backend:
         agent: "testing"
         comment: "✅ WORKING: GET /api/repo-documentation/export/{job_id} successfully exports DOCX files with correct Content-Type header (application/vnd.openxmlformats-officedocument.wordprocessingml.document). Tested with completed job - returned 37,126 bytes DOCX file. Proper error handling when job not completed (HTTP 400 with clear message)."
 
+  - task: "Repository documentation preview endpoint"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ WORKING: GET /api/repo-documentation/preview/{job_id} returns JSON with documentation array as expected. Tested successfully - returns proper JSON structure for preview functionality."
+
 frontend:
   - task: "GitHub login button functionality"
     implemented: true
