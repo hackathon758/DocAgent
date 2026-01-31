@@ -26,21 +26,27 @@ db = client[os.environ.get('DB_NAME', 'docagent')]
 
 # Bytez API configuration
 BYTEZ_API_KEY = os.environ.get('BYTEZ_API_KEY', 'f870a6e293d31c3d1aba40914052d57b')
-BYTEZ_API_URL = "https://api.bytez.com/models/v1"
+BYTEZ_API_URL = "https://api.bytez.com/models/v2"
 
-# Available AI Models via Bytez
+# Available AI Models via Bytez - Using free, working models
 AI_MODELS = {
-    "gemini": {
-        "id": "describeai/gemini",
-        "name": "DescribeAI Gemini",
-        "description": "High-quality text generation model",
-        "tasks": ["text-generation", "documentation"]
+    "qwen-coder": {
+        "id": "Qwen/Qwen3-Coder-30B-A3B-Instruct",
+        "name": "Qwen3 Coder 30B",
+        "description": "Powerful code-focused model for analysis and documentation",
+        "tasks": ["code-analysis", "documentation", "code-generation"]
     },
-    "llam-proterozoic": {
-        "id": "MesozoicMetallurgist/llam-Proterozoic", 
-        "name": "Llam Proterozoic",
-        "description": "Open-source Llama-based model for code analysis",
-        "tasks": ["code-analysis", "chat"]
+    "qwen-chat": {
+        "id": "Qwen/Qwen3-0.6B",
+        "name": "Qwen3 0.6B",
+        "description": "Fast chat model for general tasks",
+        "tasks": ["chat", "text-generation"]
+    },
+    "google-gemma": {
+        "id": "google/gemma-3-4b-it",
+        "name": "Google Gemma 3 4B",
+        "description": "Google's efficient multimodal model",
+        "tasks": ["chat", "documentation", "reasoning"]
     }
 }
 
