@@ -1676,6 +1676,462 @@ async def upgrade_subscription(tier: str, current_user: dict = Depends(get_curre
     return {"message": f"Upgraded to {tier} tier (MOCKED)", "tier": tier}
 
 # ========================
+# REPOSITORY DOCUMENTATION ROUTER
+# ========================
+
+repo_docs_router = APIRouter(prefix="/api/repo-documentation", tags=["Repository Documentation"])
+
+# Store active documentation jobs with detailed progress
+active_doc_jobs: Dict[str, Dict[str, Any]] = {}
+
+async def fetch_github_repo_contents(repo_url: str, branch: str = "main", access_token: str = None) -> List[Dict[str, Any]]:
+    """Fetch all code files from a GitHub repository"""
+    # Parse repo URL to get owner and repo name
+    # Supports: https://github.com/owner/repo or github.com/owner/repo
+    match = re.match(r'(?:https?://)?github\.com/([^/]+)/([^/]+?)(?:\.git)?/?$', repo_url)
+    if not match:
+        raise HTTPException(status_code=400, detail="Invalid GitHub repository URL")
+    
+    owner, repo = match.groups()
+    
+    headers = {
+        "Accept": "application/vnd.github.v3+json",
+        "User-Agent": "DocAgent"
+    }
+    if access_token:
+        headers["Authorization"] = f"token {access_token}"
+    
+    files = []
+    code_extensions = {'.py', '.js', '.jsx', '.ts', '.tsx', '.java', '.cpp', '.c', '.h', '.go', '.rs', '.cs', '.rb', '.php'}
+    
+    async def fetch_tree(path: str = ""):
+        """Recursively fetch repository tree"""
+        url = f"https://api.github.com/repos/{owner}/{repo}/contents/{path}"
+        if branch:
+            url += f"?ref={branch}"
+        
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(url, headers=headers)
+            
+            if response.status_code == 404:
+                raise HTTPException(status_code=404, detail="Repository not found or private")
+            elif response.status_code == 403:
+                raise HTTPException(status_code=403, detail="API rate limit exceeded or access denied")
+            elif response.status_code != 200:
+                raise HTTPException(status_code=response.status_code, detail="Failed to fetch repository")
+            
+            items = response.json()
+            
+            for item in items:
+                if item['type'] == 'file':
+                    ext = os.path.splitext(item['name'])[1].lower()
+                    if ext in code_extensions:
+                        # Fetch file content
+                        file_response = await client.get(item['download_url'], headers=headers)
+                        if file_response.status_code == 200:
+                            content = file_response.text
+                            # Detect language from extension
+                            lang_map = {
+                                '.py': 'python', '.js': 'javascript', '.jsx': 'javascript',
+                                '.ts': 'typescript', '.tsx': 'typescript', '.java': 'java',
+                                '.cpp': 'cpp', '.c': 'c', '.h': 'c', '.go': 'go',
+                                '.rs': 'rust', '.cs': 'csharp', '.rb': 'ruby', '.php': 'php'
+                            }
+                            files.append({
+                                'path': item['path'],
+                                'name': item['name'],
+                                'content': content,
+                                'language': lang_map.get(ext, 'text'),
+                                'size': item['size']
+                            })
+                elif item['type'] == 'dir' and not item['name'].startswith('.'):
+                    # Skip hidden directories and common non-code directories
+                    skip_dirs = {'node_modules', 'venv', '.git', '__pycache__', 'dist', 'build', '.idea', '.vscode'}
+                    if item['name'] not in skip_dirs:
+                        await fetch_tree(item['path'])
+    
+    await fetch_tree()
+    return files
+
+def generate_docx_from_documentation(docs: List[Dict[str, Any]], repo_name: str) -> io.BytesIO:
+    """Generate a DOCX file from documentation data"""
+    document = Document()
+    
+    # Title
+    title = document.add_heading(f'Software Documentation: {repo_name}', 0)
+    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+    # Add date
+    date_para = document.add_paragraph()
+    date_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    date_run = date_para.add_run(f'Generated on {datetime.now().strftime("%B %d, %Y")}')
+    date_run.font.size = Pt(12)
+    date_run.font.color.rgb = RGBColor(128, 128, 128)
+    
+    document.add_page_break()
+    
+    # Table of Contents
+    document.add_heading('Table of Contents', level=1)
+    for i, doc in enumerate(docs, 1):
+        toc_para = document.add_paragraph(f'{i}. {doc.get("component_path", "Unknown")}')
+        toc_para.paragraph_format.left_indent = Inches(0.25)
+    
+    document.add_page_break()
+    
+    # Documentation for each file/component
+    for doc in docs:
+        # Component heading
+        document.add_heading(doc.get('component_path', 'Unknown Component'), level=1)
+        
+        # Metadata
+        meta_para = document.add_paragraph()
+        meta_para.add_run('Language: ').bold = True
+        meta_para.add_run(doc.get('language', 'Unknown'))
+        meta_para.add_run(' | ')
+        meta_para.add_run('Type: ').bold = True
+        meta_para.add_run(doc.get('component_type', 'Unknown'))
+        meta_para.add_run(' | ')
+        meta_para.add_run('Quality Score: ').bold = True
+        meta_para.add_run(f"{doc.get('quality_score', 0):.0f}%")
+        
+        # Overview section
+        if doc.get('markdown'):
+            document.add_heading('Overview', level=2)
+            # Parse markdown and add as paragraphs
+            markdown_text = doc.get('markdown', '')
+            # Simple markdown to text conversion
+            lines = markdown_text.split('\n')
+            for line in lines:
+                if line.startswith('# '):
+                    document.add_heading(line[2:], level=2)
+                elif line.startswith('## '):
+                    document.add_heading(line[3:], level=3)
+                elif line.startswith('### '):
+                    document.add_heading(line[4:], level=4)
+                elif line.startswith('```'):
+                    continue  # Skip code fence markers
+                elif line.strip():
+                    document.add_paragraph(line)
+        
+        # Docstring section
+        if doc.get('docstring'):
+            document.add_heading('Docstring', level=2)
+            docstring_para = document.add_paragraph()
+            docstring_run = docstring_para.add_run(doc.get('docstring', ''))
+            docstring_run.font.name = 'Courier New'
+            docstring_run.font.size = Pt(10)
+        
+        # Diagram section
+        if doc.get('diagrams') and len(doc.get('diagrams', [])) > 0:
+            document.add_heading('Diagram', level=2)
+            for diagram in doc.get('diagrams', []):
+                if isinstance(diagram, dict) and diagram.get('mermaid_code'):
+                    diagram_para = document.add_paragraph()
+                    diagram_para.add_run('Mermaid Diagram Code:').bold = True
+                    code_para = document.add_paragraph()
+                    code_run = code_para.add_run(diagram.get('mermaid_code', ''))
+                    code_run.font.name = 'Courier New'
+                    code_run.font.size = Pt(9)
+                    if diagram.get('description'):
+                        desc_para = document.add_paragraph()
+                        desc_para.add_run('Description: ').bold = True
+                        desc_para.add_run(diagram.get('description', ''))
+        
+        document.add_page_break()
+    
+    # Save to BytesIO
+    doc_buffer = io.BytesIO()
+    document.save(doc_buffer)
+    doc_buffer.seek(0)
+    return doc_buffer
+
+async def process_repo_documentation(
+    job_id: str,
+    tenant_id: str,
+    repo_url: str,
+    branch: str,
+    files: List[Dict[str, Any]],
+    access_token: str = None
+):
+    """Background task to process full repository documentation"""
+    try:
+        total_files = len(files)
+        active_doc_jobs[job_id] = {
+            "status": "processing",
+            "current_agent": "reader",
+            "agents": {
+                "reader": {"status": "pending", "progress": 0, "files_processed": 0},
+                "searcher": {"status": "pending", "progress": 0, "files_processed": 0},
+                "writer": {"status": "pending", "progress": 0, "files_processed": 0},
+                "verifier": {"status": "pending", "progress": 0, "files_processed": 0},
+                "diagram": {"status": "pending", "progress": 0, "files_processed": 0}
+            },
+            "files_processed": 0,
+            "total_files": total_files,
+            "overall_progress": 0,
+            "documentation": [],
+            "repo_url": repo_url,
+            "repo_name": repo_url.split('/')[-1].replace('.git', '')
+        }
+        
+        all_documentation = []
+        
+        # Process each file through the agent pipeline
+        for file_idx, file_data in enumerate(files):
+            source_code = file_data['content']
+            language = file_data['language']
+            component_path = file_data['path']
+            
+            # Stage 1: Reader Agent
+            active_doc_jobs[job_id]["current_agent"] = "reader"
+            active_doc_jobs[job_id]["agents"]["reader"]["status"] = "processing"
+            
+            analysis = await orchestrator.reader.analyze(source_code, language)
+            
+            active_doc_jobs[job_id]["agents"]["reader"]["files_processed"] = file_idx + 1
+            active_doc_jobs[job_id]["agents"]["reader"]["progress"] = int(((file_idx + 1) / total_files) * 100)
+            
+            # Stage 2: Searcher Agent
+            active_doc_jobs[job_id]["current_agent"] = "searcher"
+            active_doc_jobs[job_id]["agents"]["searcher"]["status"] = "processing"
+            
+            context = await orchestrator.searcher.search(analysis, language)
+            
+            active_doc_jobs[job_id]["agents"]["searcher"]["files_processed"] = file_idx + 1
+            active_doc_jobs[job_id]["agents"]["searcher"]["progress"] = int(((file_idx + 1) / total_files) * 100)
+            
+            # Stage 3: Writer Agent
+            active_doc_jobs[job_id]["current_agent"] = "writer"
+            active_doc_jobs[job_id]["agents"]["writer"]["status"] = "processing"
+            
+            documentation = await orchestrator.writer.write(source_code, context, language, "google")
+            
+            active_doc_jobs[job_id]["agents"]["writer"]["files_processed"] = file_idx + 1
+            active_doc_jobs[job_id]["agents"]["writer"]["progress"] = int(((file_idx + 1) / total_files) * 100)
+            
+            # Stage 4: Verifier Agent
+            active_doc_jobs[job_id]["current_agent"] = "verifier"
+            active_doc_jobs[job_id]["agents"]["verifier"]["status"] = "processing"
+            
+            verification = await orchestrator.verifier.verify(source_code, documentation)
+            
+            active_doc_jobs[job_id]["agents"]["verifier"]["files_processed"] = file_idx + 1
+            active_doc_jobs[job_id]["agents"]["verifier"]["progress"] = int(((file_idx + 1) / total_files) * 100)
+            
+            # Stage 5: Diagram Agent
+            active_doc_jobs[job_id]["current_agent"] = "diagram"
+            active_doc_jobs[job_id]["agents"]["diagram"]["status"] = "processing"
+            
+            diagram = await orchestrator.diagram.generate_diagram(source_code)
+            
+            active_doc_jobs[job_id]["agents"]["diagram"]["files_processed"] = file_idx + 1
+            active_doc_jobs[job_id]["agents"]["diagram"]["progress"] = int(((file_idx + 1) / total_files) * 100)
+            
+            # Compile documentation for this file
+            file_doc = {
+                "component_path": component_path,
+                "component_type": analysis.get("architecture_type", "file"),
+                "language": language,
+                "docstring": documentation.get("docstring", ""),
+                "markdown": documentation.get("markdown", ""),
+                "diagrams": [diagram] if diagram else [],
+                "quality_score": verification.get("quality_score", 0),
+                "analysis": analysis,
+                "examples": documentation.get("examples", [])
+            }
+            all_documentation.append(file_doc)
+            
+            # Update overall progress
+            active_doc_jobs[job_id]["files_processed"] = file_idx + 1
+            active_doc_jobs[job_id]["overall_progress"] = int(((file_idx + 1) / total_files) * 100)
+            active_doc_jobs[job_id]["documentation"] = all_documentation
+            
+            # Broadcast progress via WebSocket
+            await ws_manager.send_progress(job_id, {
+                "type": "repo_doc:progress",
+                "job_id": job_id,
+                **active_doc_jobs[job_id]
+            })
+        
+        # Mark all agents as completed
+        for agent in active_doc_jobs[job_id]["agents"]:
+            active_doc_jobs[job_id]["agents"][agent]["status"] = "completed"
+            active_doc_jobs[job_id]["agents"][agent]["progress"] = 100
+        
+        active_doc_jobs[job_id]["status"] = "completed"
+        active_doc_jobs[job_id]["current_agent"] = "completed"
+        active_doc_jobs[job_id]["overall_progress"] = 100
+        
+        # Save to database
+        repo_name = repo_url.split('/')[-1].replace('.git', '')
+        
+        # Create repository entry if not exists
+        existing_repo = await db.repositories.find_one({"repo_url": repo_url, "tenant_id": tenant_id})
+        if not existing_repo:
+            repo_id = str(uuid.uuid4())
+            await db.repositories.insert_one({
+                "id": repo_id,
+                "tenant_id": tenant_id,
+                "name": repo_name,
+                "provider": "github",
+                "repo_url": repo_url,
+                "branch": branch,
+                "language": "mixed",
+                "last_synced_at": datetime.now(timezone.utc).isoformat(),
+                "components_count": len(all_documentation),
+                "coverage_percentage": 100.0,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            })
+        else:
+            repo_id = existing_repo["id"]
+            await db.repositories.update_one(
+                {"id": repo_id},
+                {"$set": {
+                    "last_synced_at": datetime.now(timezone.utc).isoformat(),
+                    "components_count": len(all_documentation)
+                }}
+            )
+        
+        # Save documentation entries
+        for doc in all_documentation:
+            doc_id = str(uuid.uuid4())
+            await db.documentation.insert_one({
+                "id": doc_id,
+                "tenant_id": tenant_id,
+                "repository_id": repo_id,
+                "component_path": doc["component_path"],
+                "component_type": doc["component_type"],
+                "language": doc["language"],
+                "docstring": doc["docstring"],
+                "markdown": doc["markdown"],
+                "diagrams": doc["diagrams"],
+                "quality_score": doc["quality_score"],
+                "version": 1,
+                "generated_at": datetime.now(timezone.utc).isoformat(),
+                "created_at": datetime.now(timezone.utc).isoformat()
+            })
+        
+        # Broadcast completion
+        await ws_manager.send_progress(job_id, {
+            "type": "repo_doc:completed",
+            "job_id": job_id,
+            **active_doc_jobs[job_id]
+        })
+        
+    except Exception as e:
+        logger.error(f"Repository documentation job {job_id} failed: {e}")
+        active_doc_jobs[job_id]["status"] = "failed"
+        active_doc_jobs[job_id]["error"] = str(e)
+        await ws_manager.send_progress(job_id, {
+            "type": "repo_doc:failed",
+            "job_id": job_id,
+            "error": str(e)
+        })
+
+@repo_docs_router.post("/start")
+async def start_repo_documentation(
+    request: RepoDocumentationRequest,
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(get_current_user)
+):
+    """Start full repository documentation job"""
+    # Fetch repository files
+    try:
+        # Get user's GitHub access token if available
+        user_data = await db.users.find_one({"id": current_user["id"]})
+        access_token = user_data.get("github_access_token") if user_data else None
+        
+        files = await fetch_github_repo_contents(request.repo_url, request.branch, access_token)
+        
+        if not files:
+            raise HTTPException(status_code=400, detail="No code files found in repository")
+        
+        job_id = str(uuid.uuid4())
+        
+        # Start background processing
+        background_tasks.add_task(
+            process_repo_documentation,
+            job_id,
+            current_user["tenant_id"],
+            request.repo_url,
+            request.branch,
+            files,
+            access_token
+        )
+        
+        return {
+            "job_id": job_id,
+            "status": "started",
+            "total_files": len(files),
+            "files": [{"path": f["path"], "language": f["language"]} for f in files]
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to start repo documentation: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@repo_docs_router.get("/status/{job_id}")
+async def get_repo_doc_status(job_id: str, current_user: dict = Depends(get_current_user)):
+    """Get status of repository documentation job"""
+    if job_id not in active_doc_jobs:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    job = active_doc_jobs[job_id]
+    return {
+        "job_id": job_id,
+        "status": job.get("status", "unknown"),
+        "current_agent": job.get("current_agent", ""),
+        "agents": job.get("agents", {}),
+        "files_processed": job.get("files_processed", 0),
+        "total_files": job.get("total_files", 0),
+        "overall_progress": job.get("overall_progress", 0),
+        "repo_name": job.get("repo_name", ""),
+        "error": job.get("error")
+    }
+
+@repo_docs_router.get("/export/{job_id}")
+async def export_repo_documentation(job_id: str, current_user: dict = Depends(get_current_user)):
+    """Export repository documentation as DOCX"""
+    if job_id not in active_doc_jobs:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    job = active_doc_jobs[job_id]
+    
+    if job.get("status") != "completed":
+        raise HTTPException(status_code=400, detail="Documentation generation not completed")
+    
+    documentation = job.get("documentation", [])
+    repo_name = job.get("repo_name", "repository")
+    
+    # Generate DOCX
+    docx_buffer = generate_docx_from_documentation(documentation, repo_name)
+    
+    filename = f"{repo_name}_documentation.docx"
+    
+    return StreamingResponse(
+        docx_buffer,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+@repo_docs_router.get("/preview/{job_id}")
+async def preview_repo_documentation(job_id: str, current_user: dict = Depends(get_current_user)):
+    """Get documentation preview for a job"""
+    if job_id not in active_doc_jobs:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    job = active_doc_jobs[job_id]
+    
+    return {
+        "job_id": job_id,
+        "status": job.get("status", "unknown"),
+        "repo_name": job.get("repo_name", ""),
+        "documentation": job.get("documentation", [])
+    }
+
+# ========================
 # WEBSOCKET ENDPOINT
 # ========================
 
