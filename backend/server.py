@@ -565,10 +565,10 @@ Respond with ONLY the JSON object, nothing else."""},
             }
 
 class DiagramAgent(BytezAgent):
-    """Generates Mermaid diagrams - Uses Qwen3 Coder"""
+    """Generates Mermaid diagrams - Uses Qwen2.5 Coder"""
     
     def __init__(self):
-        super().__init__(model_id="Qwen/Qwen3-Coder-30B-A3B-Instruct")
+        super().__init__(model_id="Qwen/Qwen2.5-Coder-0.5B-Instruct")
     
     async def generate_diagram(self, source_code: str, diagram_type: Optional[str] = None) -> Dict[str, Any]:
         messages = [
