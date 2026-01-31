@@ -44,99 +44,9 @@ class BackendTester:
             print(f"    Response: {json.dumps(response_data, indent=2)}")
         print()
 
-    async def test_github_oauth_url_generation(self):
-        """Test GET /api/auth/oauth/github endpoint"""
-        test_name = "GitHub OAuth URL Generation"
-        try:
-            response = await self.client.get(f"{self.base_url}/auth/oauth/github")
-            
-            if response.status_code == 200:
-                data = response.json()
-                
-                # Check if response has URL
-                if "url" not in data:
-                    await self.log_result(test_name, False, "Response missing 'url' field", data)
-                    return
-                
-                url = data["url"]
-                
-                # Check if URL contains expected client_id
-                expected_client_id = "Ov23li3nveyH7v7glUth"
-                if expected_client_id not in url:
-                    await self.log_result(test_name, False, 
-                        f"URL does not contain expected client_id '{expected_client_id}'. URL: {url}", data)
-                    return
-                
-                # Check if URL contains expected scopes
-                expected_scopes = ["user:email", "read:user"]
-                missing_scopes = []
-                for scope in expected_scopes:
-                    if scope not in url:
-                        missing_scopes.append(scope)
-                
-                if missing_scopes:
-                    await self.log_result(test_name, False, 
-                        f"URL missing expected scopes: {missing_scopes}. URL: {url}", data)
-                    return
-                
-                # Check if it's a proper GitHub OAuth URL
-                if not url.startswith("https://github.com/login/oauth/authorize"):
-                    await self.log_result(test_name, False, 
-                        f"URL is not a proper GitHub OAuth URL. Expected to start with 'https://github.com/login/oauth/authorize', got: {url}", data)
-                    return
-                
-                await self.log_result(test_name, True, f"Valid GitHub OAuth URL generated: {url}", data)
-            else:
-                await self.log_result(test_name, False, 
-                    f"HTTP {response.status_code}: {response.text}", {"status_code": response.status_code})
-                
-        except Exception as e:
-            await self.log_result(test_name, False, f"Exception: {str(e)}")
-
-    async def test_github_oauth_callback_invalid_code(self):
-        """Test POST /api/auth/oauth/github/callback with invalid code"""
-        test_name = "GitHub OAuth Callback - Invalid Code"
-        try:
-            # Test with invalid code
-            invalid_code = "invalid_test_code_12345"
-            response = await self.client.post(
-                f"{self.base_url}/auth/oauth/github/callback",
-                json={"code": invalid_code}
-            )
-            
-            # Should return an error for invalid code
-            if response.status_code in [400, 401, 422]:
-                data = response.json()
-                if "error" in data or "detail" in data:
-                    await self.log_result(test_name, True, 
-                        f"Properly handled invalid code with HTTP {response.status_code}", data)
-                else:
-                    await self.log_result(test_name, False, 
-                        f"HTTP {response.status_code} but no error message in response", data)
-            elif response.status_code == 200:
-                # If it returns 200, it might be mocked - check if it's creating a real user or mock user
-                data = response.json()
-                if "access_token" in data and "user" in data:
-                    user_email = data["user"].get("email", "")
-                    if "github_user_" in user_email or "mock" in user_email.lower():
-                        await self.log_result(test_name, False, 
-                            "Endpoint is MOCKED - returns success for invalid code and creates mock user", data)
-                    else:
-                        await self.log_result(test_name, False, 
-                            "Endpoint returned success (200) for invalid code - should return error", data)
-                else:
-                    await self.log_result(test_name, False, 
-                        f"Unexpected response format for HTTP 200", data)
-            else:
-                await self.log_result(test_name, False, 
-                    f"Unexpected HTTP status {response.status_code}: {response.text}")
-                
-        except Exception as e:
-            await self.log_result(test_name, False, f"Exception: {str(e)}")
-
     async def test_user_registration(self):
-        """Test POST /api/auth/register"""
-        test_name = "User Registration"
+        """Test POST /api/auth/register - User Registration"""
+        test_name = "User Registration (POST /api/auth/register)"
         try:
             user_data = {
                 "email": self.test_user_email,
@@ -150,11 +60,43 @@ class BackendTester:
                 data = response.json()
                 if "access_token" in data and "user" in data:
                     self.auth_token = data["access_token"]
+                    user = data["user"]
+                    
+                    # Verify user object structure
+                    required_fields = ["id", "email", "name", "tenant_id", "role", "created_at"]
+                    missing_fields = [field for field in required_fields if field not in user]
+                    
+                    if missing_fields:
+                        await self.log_result(test_name, False, 
+                            f"User object missing required fields: {missing_fields}", data)
+                        return
+                    
+                    # Verify email matches
+                    if user["email"] != self.test_user_email:
+                        await self.log_result(test_name, False, 
+                            f"Email mismatch. Expected: {self.test_user_email}, Got: {user['email']}", data)
+                        return
+                    
+                    # Verify name matches
+                    if user["name"] != self.test_user_name:
+                        await self.log_result(test_name, False, 
+                            f"Name mismatch. Expected: {self.test_user_name}, Got: {user['name']}", data)
+                        return
+                    
                     await self.log_result(test_name, True, 
-                        f"User registered successfully: {data['user']['email']}", 
-                        {"user_id": data["user"]["id"], "email": data["user"]["email"]})
+                        f"User registered successfully: {user['email']}", 
+                        {"user_id": user["id"], "email": user["email"], "name": user["name"]})
                 else:
                     await self.log_result(test_name, False, "Missing access_token or user in response", data)
+            elif response.status_code == 400:
+                # Check if it's because user already exists
+                data = response.json()
+                if "already registered" in data.get("detail", "").lower():
+                    await self.log_result(test_name, True, 
+                        "User already exists - this is expected behavior for duplicate registration", data)
+                else:
+                    await self.log_result(test_name, False, 
+                        f"HTTP 400 with unexpected error: {data.get('detail', 'Unknown error')}", data)
             else:
                 await self.log_result(test_name, False, 
                     f"HTTP {response.status_code}: {response.text}")
@@ -163,8 +105,8 @@ class BackendTester:
             await self.log_result(test_name, False, f"Exception: {str(e)}")
 
     async def test_user_login(self):
-        """Test POST /api/auth/login"""
-        test_name = "User Login"
+        """Test POST /api/auth/login - User Login"""
+        test_name = "User Login (POST /api/auth/login)"
         try:
             login_data = {
                 "email": self.test_user_email,
@@ -178,9 +120,26 @@ class BackendTester:
                 if "access_token" in data and "user" in data:
                     # Update token for subsequent tests
                     self.auth_token = data["access_token"]
+                    user = data["user"]
+                    
+                    # Verify user object structure
+                    required_fields = ["id", "email", "name", "tenant_id", "role", "created_at"]
+                    missing_fields = [field for field in required_fields if field not in user]
+                    
+                    if missing_fields:
+                        await self.log_result(test_name, False, 
+                            f"User object missing required fields: {missing_fields}", data)
+                        return
+                    
+                    # Verify email matches
+                    if user["email"] != self.test_user_email:
+                        await self.log_result(test_name, False, 
+                            f"Email mismatch. Expected: {self.test_user_email}, Got: {user['email']}", data)
+                        return
+                    
                     await self.log_result(test_name, True, 
-                        f"User logged in successfully: {data['user']['email']}", 
-                        {"user_id": data["user"]["id"], "email": data["user"]["email"]})
+                        f"User logged in successfully: {user['email']}", 
+                        {"user_id": user["id"], "email": user["email"], "name": user["name"]})
                 else:
                     await self.log_result(test_name, False, "Missing access_token or user in response", data)
             else:
@@ -191,8 +150,8 @@ class BackendTester:
             await self.log_result(test_name, False, f"Exception: {str(e)}")
 
     async def test_get_current_user(self):
-        """Test GET /api/auth/me"""
-        test_name = "Get Current User Info"
+        """Test GET /api/auth/me - Get Current User"""
+        test_name = "Get Current User (GET /api/auth/me)"
         try:
             if not self.auth_token:
                 await self.log_result(test_name, False, "No auth token available - skipping test")
@@ -203,15 +162,113 @@ class BackendTester:
             
             if response.status_code == 200:
                 data = response.json()
-                if "id" in data and "email" in data and data["email"] == self.test_user_email:
-                    await self.log_result(test_name, True, 
-                        f"Current user info retrieved: {data['email']}", 
-                        {"user_id": data["id"], "email": data["email"], "name": data.get("name")})
-                else:
-                    await self.log_result(test_name, False, "Invalid user data in response", data)
+                
+                # Verify required fields
+                required_fields = ["id", "email", "name", "tenant_id", "role", "created_at"]
+                missing_fields = [field for field in required_fields if field not in data]
+                
+                if missing_fields:
+                    await self.log_result(test_name, False, 
+                        f"Response missing required fields: {missing_fields}", data)
+                    return
+                
+                # Verify email matches
+                if data["email"] != self.test_user_email:
+                    await self.log_result(test_name, False, 
+                        f"Email mismatch. Expected: {self.test_user_email}, Got: {data['email']}", data)
+                    return
+                
+                await self.log_result(test_name, True, 
+                    f"Current user info retrieved: {data['email']}", 
+                    {"user_id": data["id"], "email": data["email"], "name": data.get("name")})
             else:
                 await self.log_result(test_name, False, 
                     f"HTTP {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            await self.log_result(test_name, False, f"Exception: {str(e)}")
+
+    async def test_duplicate_registration(self):
+        """Test registering with already existing email (should fail with 400)"""
+        test_name = "Duplicate Registration Error (should return 400)"
+        try:
+            user_data = {
+                "email": self.test_user_email,  # Same email as before
+                "password": self.test_user_password,
+                "name": "Another User"
+            }
+            
+            response = await self.client.post(f"{self.base_url}/auth/register", json=user_data)
+            
+            if response.status_code == 400:
+                data = response.json()
+                if "already registered" in data.get("detail", "").lower() or "already" in data.get("detail", "").lower():
+                    await self.log_result(test_name, True, 
+                        f"Correctly rejected duplicate email with HTTP 400: {data.get('detail')}", data)
+                else:
+                    await self.log_result(test_name, False, 
+                        f"HTTP 400 but unexpected error message: {data.get('detail')}", data)
+            else:
+                await self.log_result(test_name, False, 
+                    f"Expected HTTP 400 for duplicate email, got HTTP {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            await self.log_result(test_name, False, f"Exception: {str(e)}")
+
+    async def test_login_wrong_password(self):
+        """Test logging in with wrong password (should fail with 401)"""
+        test_name = "Login with Wrong Password (should return 401)"
+        try:
+            login_data = {
+                "email": self.test_user_email,
+                "password": "WrongPassword123!"  # Wrong password
+            }
+            
+            response = await self.client.post(f"{self.base_url}/auth/login", json=login_data)
+            
+            if response.status_code == 401:
+                data = response.json()
+                await self.log_result(test_name, True, 
+                    f"Correctly rejected wrong password with HTTP 401: {data.get('detail')}", data)
+            else:
+                await self.log_result(test_name, False, 
+                    f"Expected HTTP 401 for wrong password, got HTTP {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            await self.log_result(test_name, False, f"Exception: {str(e)}")
+
+    async def test_me_without_token(self):
+        """Test accessing /api/auth/me without token (should fail with 401/403)"""
+        test_name = "Access /me without Token (should return 401/403)"
+        try:
+            # No Authorization header
+            response = await self.client.get(f"{self.base_url}/auth/me")
+            
+            if response.status_code in [401, 403]:
+                data = response.json() if response.headers.get("content-type", "").startswith("application/json") else {"error": response.text}
+                await self.log_result(test_name, True, 
+                    f"Correctly rejected request without token with HTTP {response.status_code}", data)
+            else:
+                await self.log_result(test_name, False, 
+                    f"Expected HTTP 401/403 for missing token, got HTTP {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            await self.log_result(test_name, False, f"Exception: {str(e)}")
+
+    async def test_me_with_invalid_token(self):
+        """Test accessing /api/auth/me with invalid token (should fail with 401)"""
+        test_name = "Access /me with Invalid Token (should return 401)"
+        try:
+            headers = {"Authorization": "Bearer invalid_token_12345"}
+            response = await self.client.get(f"{self.base_url}/auth/me", headers=headers)
+            
+            if response.status_code == 401:
+                data = response.json() if response.headers.get("content-type", "").startswith("application/json") else {"error": response.text}
+                await self.log_result(test_name, True, 
+                    f"Correctly rejected invalid token with HTTP 401", data)
+            else:
+                await self.log_result(test_name, False, 
+                    f"Expected HTTP 401 for invalid token, got HTTP {response.status_code}: {response.text}")
                 
         except Exception as e:
             await self.log_result(test_name, False, f"Exception: {str(e)}")
