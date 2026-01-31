@@ -407,27 +407,38 @@ Respond with ONLY the JSON object, nothing else."""},
             }
 
 class SearcherAgent(BytezAgent):
-    """Gathers context for documentation - Uses DescribeAI Gemini"""
+    """Gathers context for documentation - Uses Google Gemma"""
     
     def __init__(self):
-        super().__init__(model_id="describeai/gemini")
+        super().__init__(model_id="google/gemma-3-4b-it")
     
     async def search(self, code_analysis: Dict[str, Any], language: str) -> Dict[str, Any]:
         messages = [
-            {"role": "system", "content": """You are a context retrieval expert. Based on the code analysis, provide:
-1. Relevant design patterns
-2. Best practices for documentation
-3. Related concepts
-4. Example usage patterns
-Respond in JSON format."""},
-            {"role": "user", "content": f"Provide context for documenting {language} code with analysis:\n{json.dumps(code_analysis)}"}
+            {"role": "system", "content": """You are a context retrieval expert. Based on the code analysis, provide relevant context for documentation.
+
+Respond with ONLY a valid JSON object (no markdown, no explanation):
+{
+  "patterns": [<design patterns used>],
+  "best_practices": [<documentation best practices>],
+  "concepts": [<relevant programming concepts>],
+  "examples": [<example usage patterns>]
+}
+
+Respond with ONLY the JSON object, nothing else."""},
+            {"role": "user", "content": f"Provide context for documenting {language} code with this analysis:\n{json.dumps(code_analysis)}"}
         ]
         
-        response = await self.generate(messages)
+        response = await self.generate(messages, max_tokens=500)
         
         try:
-            return json.loads(response)
+            clean_response = response.strip()
+            if "```json" in clean_response:
+                clean_response = clean_response.split("```json")[1].split("```")[0].strip()
+            elif "```" in clean_response:
+                clean_response = clean_response.split("```")[1].split("```")[0].strip()
+            return json.loads(clean_response)
         except:
+            logger.warning(f"Failed to parse Searcher response as JSON: {response[:200]}")
             return {
                 "patterns": ["standard function documentation"],
                 "best_practices": ["Include type hints", "Add examples"],
