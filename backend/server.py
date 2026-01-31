@@ -347,7 +347,10 @@ class BytezAgent:
         return "Generated content"
 
 class ReaderAgent(BytezAgent):
-    """Analyzes code and determines documentation needs"""
+    """Analyzes code and determines documentation needs - Uses Llam Proterozoic"""
+    
+    def __init__(self):
+        super().__init__(model_id="MesozoicMetallurgist/llam-Proterozoic")
     
     async def analyze(self, source_code: str, language: str) -> Dict[str, Any]:
         messages = [
