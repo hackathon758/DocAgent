@@ -407,7 +407,10 @@ Respond in JSON format."""},
             }
 
 class WriterAgent(BytezAgent):
-    """Generates documentation"""
+    """Generates documentation - Uses DescribeAI Gemini"""
+    
+    def __init__(self):
+        super().__init__(model_id="describeai/gemini")
     
     async def write(self, source_code: str, context: Dict[str, Any], language: str, style: str) -> Dict[str, Any]:
         style_guide = {
