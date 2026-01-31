@@ -495,7 +495,10 @@ Score each 0-100 and provide overall score. Respond in JSON with:
             }
 
 class DiagramAgent(BytezAgent):
-    """Generates Mermaid diagrams"""
+    """Generates Mermaid diagrams - Uses DescribeAI Gemini"""
+    
+    def __init__(self):
+        super().__init__(model_id="describeai/gemini")
     
     async def generate_diagram(self, source_code: str, diagram_type: Optional[str] = None) -> Dict[str, Any]:
         messages = [
