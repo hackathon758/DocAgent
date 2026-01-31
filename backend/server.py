@@ -28,24 +28,30 @@ db = client[os.environ.get('DB_NAME', 'docagent')]
 BYTEZ_API_KEY = os.environ.get('BYTEZ_API_KEY', 'f870a6e293d31c3d1aba40914052d57b')
 BYTEZ_API_URL = "https://api.bytez.com/models/v2"
 
-# Available AI Models via Bytez - Using free, working models
+# Available AI Models via Bytez - Verified working free models
 AI_MODELS = {
     "qwen-coder": {
-        "id": "Qwen/Qwen3-Coder-30B-A3B-Instruct",
-        "name": "Qwen3 Coder 30B",
-        "description": "Powerful code-focused model for analysis and documentation",
+        "id": "Qwen/Qwen2.5-Coder-0.5B-Instruct",
+        "name": "Qwen 2.5 Coder 0.5B",
+        "description": "Fast code-focused model for analysis and documentation",
         "tasks": ["code-analysis", "documentation", "code-generation"]
     },
-    "qwen-chat": {
-        "id": "Qwen/Qwen3-0.6B",
-        "name": "Qwen3 0.6B",
-        "description": "Fast chat model for general tasks",
+    "smollm-chat": {
+        "id": "HuggingFaceTB/SmolLM2-1.7B-Instruct",
+        "name": "SmolLM2 1.7B",
+        "description": "Efficient chat model for verification tasks",
+        "tasks": ["chat", "verification", "reasoning"]
+    },
+    "smollm-small": {
+        "id": "HuggingFaceTB/SmolLM2-360M-Instruct",
+        "name": "SmolLM2 360M",
+        "description": "Ultra-fast model for quick tasks",
         "tasks": ["chat", "text-generation"]
     },
-    "google-gemma": {
-        "id": "google/gemma-3-4b-it",
-        "name": "Google Gemma 3 4B",
-        "description": "Google's efficient multimodal model",
+    "phi-mini": {
+        "id": "microsoft/Phi-3-mini-4k-instruct",
+        "name": "Phi-3 Mini 4K",
+        "description": "Microsoft's efficient reasoning model",
         "tasks": ["chat", "documentation", "reasoning"]
     }
 }
