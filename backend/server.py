@@ -444,10 +444,10 @@ Respond with ONLY the JSON object, nothing else."""},
             }
 
 class SearcherAgent(BytezAgent):
-    """Gathers context for documentation - Uses SmolLM2"""
+    """Gathers context for documentation - Uses Qwen2.5-Coder 7B via Bytez"""
     
     def __init__(self):
-        super().__init__(model_id="HuggingFaceTB/SmolLM2-1.7B-Instruct")
+        super().__init__(model_id="Qwen/Qwen2.5-Coder-7B-Instruct")
     
     async def search(self, code_analysis: Dict[str, Any], language: str) -> Dict[str, Any]:
         messages = [
@@ -484,10 +484,10 @@ Respond with ONLY the JSON object, nothing else."""},
             }
 
 class WriterAgent(BytezAgent):
-    """Generates documentation - Uses Qwen2.5 Coder"""
+    """Generates documentation - Uses StarCoder2 15B via Bytez"""
     
     def __init__(self):
-        super().__init__(model_id="Qwen/Qwen2.5-Coder-0.5B-Instruct")
+        super().__init__(model_id="bigcode/starcoder2-15b-instruct-v0.1")
     
     async def write(self, source_code: str, context: Dict[str, Any], language: str, style: str) -> Dict[str, Any]:
         style_guide = {
@@ -541,10 +541,10 @@ Respond with ONLY the JSON object, nothing else."""},
             }
 
 class VerifierAgent(BytezAgent):
-    """Verifies documentation quality - Uses SmolLM2"""
+    """Verifies documentation quality - Uses Llama 3.1 8B via Bytez"""
     
     def __init__(self):
-        super().__init__(model_id="HuggingFaceTB/SmolLM2-1.7B-Instruct")
+        super().__init__(model_id="meta-llama/Meta-Llama-3.1-8B-Instruct")
     
     async def verify(self, source_code: str, documentation: Dict[str, Any]) -> Dict[str, Any]:
         messages = [
@@ -590,10 +590,10 @@ Respond with ONLY the JSON object, nothing else."""},
             }
 
 class DiagramAgent(BytezAgent):
-    """Generates Mermaid diagrams - Uses Qwen2.5 Coder"""
+    """Generates Mermaid diagrams - Uses Llama 3.1 8B via Bytez"""
     
     def __init__(self):
-        super().__init__(model_id="Qwen/Qwen2.5-Coder-0.5B-Instruct")
+        super().__init__(model_id="meta-llama/Meta-Llama-3.1-8B-Instruct")
     
     async def generate_diagram(self, source_code: str, diagram_type: Optional[str] = None) -> Dict[str, Any]:
         messages = [
