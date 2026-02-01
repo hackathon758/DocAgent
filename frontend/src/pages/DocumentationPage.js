@@ -88,11 +88,45 @@ const DocumentationPage = () => {
 
   useEffect(() => {
     if (selectedDoc?.diagrams?.[0]?.mermaid_code) {
-      renderMermaid();
+      renderMermaidDiagram(selectedDoc.diagrams[0].mermaid_code);
+    } else {
+      setDiagramSvg('');
+      setDiagramError(null);
     }
   }, [selectedDoc]);
 
-  const fetchDocumentation = async () => {
+  // Render Mermaid diagram using mermaid.render() for proper SVG output
+  const renderMermaidDiagram = useCallback(async (mermaidCode) => {
+    if (!mermaidCode) return;
+    
+    setDiagramLoading(true);
+    setDiagramError(null);
+    setDiagramSvg('');
+    
+    try {
+      // Clean up the mermaid code - replace escaped newlines with actual newlines
+      let cleanCode = mermaidCode
+        .replace(/\\n/g, '\n')
+        .replace(/\\t/g, '  ')
+        .trim();
+      
+      // Generate unique ID for this render
+      const uniqueId = `mermaid-diagram-${Date.now()}`;
+      
+      // Use mermaid.render() to generate SVG
+      const { svg } = await mermaid.render(uniqueId, cleanCode);
+      
+      setDiagramSvg(svg);
+    } catch (error) {
+      console.error('Mermaid render error:', error);
+      setDiagramError(error.message || 'Failed to render diagram');
+      
+      // Still show the raw code in case of error
+      setDiagramSvg('');
+    } finally {
+      setDiagramLoading(false);
+    }
+  }, []);
     try {
       const response = await axios.get(`${API_URL}/api/documentation`);
       setDocumentation(response.data);
