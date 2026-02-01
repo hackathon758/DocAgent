@@ -44,8 +44,6 @@ const DashboardPage = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [analytics, setAnalytics] = useState(null);
-  const [loading, setLoading] = useState(true);
   
   // Repository documentation state
   const [repoUrl, setRepoUrl] = useState('');
@@ -57,25 +55,12 @@ const DashboardPage = () => {
   const pollIntervalRef = useRef(null);
 
   useEffect(() => {
-    fetchAnalytics();
     return () => {
       if (pollIntervalRef.current) {
         clearInterval(pollIntervalRef.current);
       }
     };
   }, []);
-
-  const fetchAnalytics = async () => {
-    try {
-      const response = await axios.get(`${API_URL}/api/analytics/overview`);
-      setAnalytics(response.data);
-    } catch (error) {
-      console.error('Failed to fetch analytics:', error);
-      toast.error('Failed to load dashboard data');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleLogout = () => {
     logout();
