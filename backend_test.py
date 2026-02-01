@@ -519,6 +519,170 @@ class BackendTester:
         except Exception as e:
             await self.log_result(test_name, False, f"Exception: {str(e)}")
 
+    async def test_models_endpoint(self):
+        """Test GET /api/models - Verify agent model assignments"""
+        test_name = "AI Models Configuration (GET /api/models)"
+        try:
+            response = await self.client.get(f"{self.base_url}/models")
+            
+            if response.status_code == 200:
+                data = response.json()
+                
+                # Verify agent_assignments structure
+                if "agent_assignments" not in data:
+                    await self.log_result(test_name, False, "Missing agent_assignments in response", data)
+                    return
+                
+                assignments = data["agent_assignments"]
+                
+                # Expected model assignments from the review request
+                expected_assignments = {
+                    "reader": "Salesforce/codet5p-16b",
+                    "searcher": "Qwen/Qwen2.5-Coder-7B-Instruct", 
+                    "writer": "bigcode/starcoder2-15b-instruct-v0.1",
+                    "verifier": "meta-llama/Meta-Llama-3.1-8B-Instruct",
+                    "diagram": "meta-llama/Meta-Llama-3.1-8B-Instruct"
+                }
+                
+                # Verify each assignment
+                mismatches = []
+                for agent, expected_model in expected_assignments.items():
+                    if agent not in assignments:
+                        mismatches.append(f"Missing agent: {agent}")
+                    elif assignments[agent] != expected_model:
+                        mismatches.append(f"{agent}: expected '{expected_model}', got '{assignments[agent]}'")
+                
+                if mismatches:
+                    await self.log_result(test_name, False, 
+                        f"Agent model assignment mismatches: {'; '.join(mismatches)}", 
+                        {"expected": expected_assignments, "actual": assignments})
+                else:
+                    await self.log_result(test_name, True, 
+                        "All agent model assignments are correct", 
+                        {"assignments": assignments})
+                        
+            else:
+                await self.log_result(test_name, False, 
+                    f"HTTP {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            await self.log_result(test_name, False, f"Exception: {str(e)}")
+
+    async def test_models_status_endpoint(self):
+        """Test GET /api/models/status - Verify Bytez API configuration"""
+        test_name = "AI Models Status (GET /api/models/status)"
+        try:
+            response = await self.client.get(f"{self.base_url}/models/status")
+            
+            if response.status_code == 200:
+                data = response.json()
+                
+                # Verify required fields
+                required_fields = ["bytez_configured", "bytez_api_url", "models_available"]
+                missing_fields = [field for field in required_fields if field not in data]
+                
+                if missing_fields:
+                    await self.log_result(test_name, False, 
+                        f"Response missing required fields: {missing_fields}", data)
+                    return
+                
+                # Verify Bytez configuration
+                if not data.get("bytez_configured"):
+                    await self.log_result(test_name, False, 
+                        "Bytez API is not configured", data)
+                    return
+                
+                if not data.get("models_available"):
+                    await self.log_result(test_name, False, 
+                        "Models are not available", data)
+                    return
+                
+                await self.log_result(test_name, True, 
+                    f"Bytez API configured and models available. API URL: {data.get('bytez_api_url')}", 
+                    {"bytez_configured": data["bytez_configured"], "models_available": data["models_available"]})
+                        
+            else:
+                await self.log_result(test_name, False, 
+                    f"HTTP {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            await self.log_result(test_name, False, f"Exception: {str(e)}")
+
+    async def test_repo_documentation_with_model_verification(self):
+        """Test repository documentation with focus on agent model usage"""
+        test_name = "Repository Documentation with Model Verification"
+        try:
+            if not self.auth_token:
+                await self.log_result(test_name, False, "No auth token available - skipping test")
+                return
+            
+            headers = {"Authorization": f"Bearer {self.auth_token}"}
+            # Use the specific repo from review request
+            repo_data = {
+                "repo_url": "https://github.com/sindresorhus/is",
+                "branch": "main"
+            }
+            
+            # Start documentation job
+            response = await self.client.post(f"{self.base_url}/repo-documentation/start", 
+                                            json=repo_data, headers=headers)
+            
+            if response.status_code != 200:
+                await self.log_result(test_name, False, 
+                    f"Failed to start documentation job: HTTP {response.status_code}: {response.text}")
+                return
+            
+            data = response.json()
+            job_id = data.get("job_id")
+            
+            if not job_id:
+                await self.log_result(test_name, False, "No job_id returned from start endpoint", data)
+                return
+            
+            # Wait a moment for job to initialize
+            await asyncio.sleep(3)
+            
+            # Check status to verify agent progress with new model names
+            status_response = await self.client.get(f"{self.base_url}/repo-documentation/status/{job_id}", 
+                                                  headers=headers)
+            
+            if status_response.status_code == 200:
+                status_data = status_response.json()
+                
+                # Verify agents are present and have expected structure
+                if "agents" not in status_data:
+                    await self.log_result(test_name, False, "No agents field in status response", status_data)
+                    return
+                
+                agents = status_data["agents"]
+                expected_agents = ["reader", "searcher", "writer", "verifier", "diagram"]
+                found_agents = [agent for agent in expected_agents if agent in agents]
+                
+                if len(found_agents) < 3:  # At least some agents should be present
+                    await self.log_result(test_name, False, 
+                        f"Expected at least 3 agents, found only: {found_agents}", status_data)
+                    return
+                
+                # Verify current_agent field exists
+                if "current_agent" not in status_data:
+                    await self.log_result(test_name, False, "No current_agent field in status response", status_data)
+                    return
+                
+                await self.log_result(test_name, True, 
+                    f"Documentation job running with new model configuration. Current agent: {status_data.get('current_agent')}, Active agents: {found_agents}", 
+                    {"job_id": job_id, "current_agent": status_data.get("current_agent"), "agents_found": found_agents})
+                    
+                # Store this job_id for other tests if not already set
+                if not hasattr(self, 'job_id') or not self.job_id:
+                    self.job_id = job_id
+                    
+            else:
+                await self.log_result(test_name, False, 
+                    f"Failed to get job status: HTTP {status_response.status_code}: {status_response.text}")
+                
+        except Exception as e:
+            await self.log_result(test_name, False, f"Exception: {str(e)}")
+
     async def test_health_check(self):
         """Test basic API health"""
         test_name = "API Health Check"
