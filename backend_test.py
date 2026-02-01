@@ -709,7 +709,13 @@ class BackendTester:
         # Test basic API health first
         await self.test_health_check()
         
+        # Test AI Models Configuration (NEW - from review request)
+        print("\n🤖 Testing AI Models Configuration...")
+        await self.test_models_endpoint()
+        await self.test_models_status_endpoint()
+        
         # Test main authentication flow
+        print("\n🔐 Testing Authentication...")
         await self.test_user_registration()
         await self.test_user_login()
         await self.test_get_current_user()
@@ -722,7 +728,7 @@ class BackendTester:
         
         # Test repository documentation endpoints (requires authentication)
         print("\n📚 Testing Repository Documentation Endpoints...")
-        await self.test_repo_documentation_start()
+        await self.test_repo_documentation_with_model_verification()  # NEW - focuses on model verification
         
         # Wait a moment for job to initialize before checking status
         if hasattr(self, 'job_id') and self.job_id:
