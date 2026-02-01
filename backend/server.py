@@ -1462,11 +1462,11 @@ async def list_ai_models():
             }
         ],
         "agent_assignments": {
-            "reader": "Qwen/Qwen2.5-Coder-0.5B-Instruct",
-            "searcher": "HuggingFaceTB/SmolLM2-1.7B-Instruct",
-            "writer": "Qwen/Qwen2.5-Coder-0.5B-Instruct",
-            "verifier": "HuggingFaceTB/SmolLM2-1.7B-Instruct",
-            "diagram": "Qwen/Qwen2.5-Coder-0.5B-Instruct"
+            "reader": "Salesforce/codet5p-16b",
+            "searcher": "Qwen/Qwen2.5-Coder-7B-Instruct",
+            "writer": "bigcode/starcoder2-15b-instruct-v0.1",
+            "verifier": "meta-llama/Meta-Llama-3.1-8B-Instruct",
+            "diagram": "meta-llama/Meta-Llama-3.1-8B-Instruct"
         }
     }
 
