@@ -13,7 +13,7 @@ import sys
 import os
 
 # Get backend URL from frontend .env file
-BACKEND_URL = "https://pre-export-view.preview.emergentagent.com/api"
+BACKEND_URL = "https://mermaid-renderer.preview.emergentagent.com/api"
 
 class BackendTester:
     def __init__(self):
