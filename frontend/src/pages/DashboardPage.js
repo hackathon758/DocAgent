@@ -348,16 +348,28 @@ const DashboardPage = () => {
                   </Button>
                   
                   {jobStatus?.status === 'completed' && (
-                    <Button 
-                      onClick={handleExportDocx}
-                      variant="outline"
-                      size="lg"
-                      className="border-green-500/50 text-green-400 hover:bg-green-500/10"
-                      data-testid="export-btn"
-                    >
-                      <Download className="w-5 h-5 mr-2" />
-                      Export DOCX
-                    </Button>
+                    <>
+                      <Button 
+                        onClick={() => setShowPreviewModal(true)}
+                        variant="outline"
+                        size="lg"
+                        className="border-primary/50 text-primary hover:bg-primary/10"
+                        data-testid="preview-btn"
+                      >
+                        <FileSearch className="w-5 h-5 mr-2" />
+                        Preview
+                      </Button>
+                      <Button 
+                        onClick={handleExportDocx}
+                        variant="outline"
+                        size="lg"
+                        className="border-green-500/50 text-green-400 hover:bg-green-500/10"
+                        data-testid="export-btn"
+                      >
+                        <Download className="w-5 h-5 mr-2" />
+                        Export DOCX
+                      </Button>
+                    </>
                   )}
                 </div>
               </CardContent>
