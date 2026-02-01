@@ -399,17 +399,70 @@ const DocumentationPage = () => {
 
                   <TabsContent value="diagram" className="flex-1 overflow-auto p-4">
                     <Card className="bg-card border-white/5">
-                      <CardHeader>
+                      <CardHeader className="flex flex-row items-center justify-between">
                         <CardTitle className="text-sm">
                           {selectedDoc.diagrams?.[0]?.diagram_type || 'Flowchart'} Diagram
                         </CardTitle>
+                        {selectedDoc.diagrams?.[0]?.mermaid_code && (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => copyToClipboard(selectedDoc.diagrams[0].mermaid_code)}
+                          >
+                            <Copy className="w-4 h-4 mr-2" />
+                            Copy Mermaid Code
+                          </Button>
+                        )}
                       </CardHeader>
                       <CardContent>
                         {selectedDoc.diagrams?.[0]?.mermaid_code ? (
-                          <div className="bg-muted/30 rounded-lg p-6 overflow-auto">
-                            <div id="mermaid-diagram" className="mermaid flex justify-center">
-                              {selectedDoc.diagrams[0].mermaid_code}
+                          <div className="space-y-4">
+                            {/* Rendered Diagram */}
+                            <div className="bg-muted/30 rounded-lg p-6 overflow-auto min-h-[200px]">
+                              {diagramLoading ? (
+                                <div className="flex items-center justify-center h-[200px]">
+                                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                                  <span className="ml-3 text-muted-foreground">Rendering diagram...</span>
+                                </div>
+                              ) : diagramError ? (
+                                <div className="flex flex-col items-center justify-center h-[200px] text-center">
+                                  <AlertCircle className="w-12 h-12 text-red-400 mb-4" />
+                                  <p className="text-red-400 font-medium mb-2">Failed to render diagram</p>
+                                  <p className="text-muted-foreground text-sm max-w-md mb-4">{diagramError}</p>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => renderMermaidDiagram(selectedDoc.diagrams[0].mermaid_code)}
+                                  >
+                                    Retry Render
+                                  </Button>
+                                </div>
+                              ) : diagramSvg ? (
+                                <div 
+                                  ref={diagramContainerRef}
+                                  className="flex justify-center mermaid-container"
+                                  dangerouslySetInnerHTML={{ __html: diagramSvg }}
+                                />
+                              ) : (
+                                <div className="flex items-center justify-center h-[200px]">
+                                  <p className="text-muted-foreground">Click to render diagram</p>
+                                </div>
+                              )}
                             </div>
+                            
+                            {/* Mermaid Source Code (collapsible) */}
+                            <details className="bg-muted/20 rounded-lg">
+                              <summary className="px-4 py-3 cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+                                View Mermaid Source Code
+                              </summary>
+                              <div className="px-4 pb-4">
+                                <pre className="bg-black/50 rounded-lg p-4 text-sm overflow-x-auto">
+                                  <code className="text-green-400 whitespace-pre-wrap">
+                                    {selectedDoc.diagrams[0].mermaid_code.replace(/\\n/g, '\n')}
+                                  </code>
+                                </pre>
+                              </div>
+                            </details>
                           </div>
                         ) : (
                           <p className="text-muted-foreground text-center py-8">No diagram available</p>
