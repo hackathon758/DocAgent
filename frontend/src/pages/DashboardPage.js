@@ -177,19 +177,6 @@ const DashboardPage = () => {
     return jobStatus.agents[agentId]?.progress || 0;
   };
 
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'completed':
-        return <CheckCircle2 className="w-4 h-4 text-green-400" />;
-      case 'processing':
-        return <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />;
-      case 'failed':
-        return <AlertCircle className="w-4 h-4 text-red-400" />;
-      default:
-        return <Clock className="w-4 h-4 text-muted-foreground" />;
-    }
-  };
-
   return (
     <div className="min-h-screen bg-background flex">
       {/* Sidebar */}
