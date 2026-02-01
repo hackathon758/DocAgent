@@ -36,31 +36,31 @@ db = client[os.environ.get('DB_NAME', 'docagent')]
 BYTEZ_API_KEY = os.environ.get('BYTEZ_API_KEY', 'f870a6e293d31c3d1aba40914052d57b')
 BYTEZ_API_URL = "https://api.bytez.com/models/v2"
 
-# Available AI Models via Bytez - Verified working free models
+# Available AI Models via Bytez - Updated with user-requested models
 AI_MODELS = {
-    "qwen-coder": {
-        "id": "Qwen/Qwen2.5-Coder-0.5B-Instruct",
-        "name": "Qwen 2.5 Coder 0.5B",
-        "description": "Fast code-focused model for analysis and documentation",
+    "codet5p": {
+        "id": "Salesforce/codet5p-16b",
+        "name": "CodeT5+ 16B",
+        "description": "Salesforce CodeT5+ for code understanding and analysis (Reader Agent)",
+        "tasks": ["code-analysis", "code-understanding", "documentation"]
+    },
+    "qwen-coder-7b": {
+        "id": "Qwen/Qwen2.5-Coder-7B-Instruct",
+        "name": "Qwen 2.5 Coder 7B",
+        "description": "Qwen code-focused model for search and context retrieval (Search Agent)",
         "tasks": ["code-analysis", "documentation", "code-generation"]
     },
-    "smollm-chat": {
-        "id": "HuggingFaceTB/SmolLM2-1.7B-Instruct",
-        "name": "SmolLM2 1.7B",
-        "description": "Efficient chat model for verification tasks",
-        "tasks": ["chat", "verification", "reasoning"]
+    "starcoder2-15b": {
+        "id": "bigcode/starcoder2-15b-instruct-v0.1",
+        "name": "StarCoder2 15B Instruct",
+        "description": "BigCode StarCoder2 for documentation writing (Writer Agent)",
+        "tasks": ["code-generation", "documentation", "text-generation"]
     },
-    "smollm-small": {
-        "id": "HuggingFaceTB/SmolLM2-360M-Instruct",
-        "name": "SmolLM2 360M",
-        "description": "Ultra-fast model for quick tasks",
-        "tasks": ["chat", "text-generation"]
-    },
-    "phi-mini": {
-        "id": "microsoft/Phi-3-mini-4k-instruct",
-        "name": "Phi-3 Mini 4K",
-        "description": "Microsoft's efficient reasoning model",
-        "tasks": ["chat", "documentation", "reasoning"]
+    "llama-3.1-8b": {
+        "id": "meta-llama/Meta-Llama-3.1-8B-Instruct",
+        "name": "Llama 3.1 8B Instruct",
+        "description": "Meta Llama 3.1 for verification and diagram generation (Verifier & Diagram Agents)",
+        "tasks": ["chat", "verification", "reasoning", "documentation"]
     }
 }
 
