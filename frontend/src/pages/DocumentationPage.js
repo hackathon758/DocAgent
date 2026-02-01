@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import axios from 'axios';
@@ -27,7 +27,8 @@ import {
   Filter,
   LayoutGrid,
   List,
-  Cpu
+  Cpu,
+  AlertCircle
 } from 'lucide-react';
 import {
   Select,
@@ -39,11 +40,22 @@ import {
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
-// Initialize mermaid
+// Initialize mermaid with proper configuration for dark theme
 mermaid.initialize({
-  startOnLoad: true,
+  startOnLoad: false,
   theme: 'dark',
   securityLevel: 'loose',
+  fontFamily: 'Inter, sans-serif',
+  flowchart: {
+    useMaxWidth: true,
+    htmlLabels: true,
+    curve: 'basis'
+  },
+  sequence: {
+    diagramMarginX: 50,
+    diagramMarginY: 10,
+    useMaxWidth: true
+  }
 });
 
 const DocumentationPage = () => {
