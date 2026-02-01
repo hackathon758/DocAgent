@@ -297,15 +297,7 @@ const DashboardPage = () => {
         {/* Top Bar */}
         <header className="h-16 border-b border-white/5 bg-card/50 flex items-center justify-between px-6">
           <div className="flex items-center gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <input 
-                type="text"
-                placeholder="Search documentation..."
-                className="w-80 h-10 pl-10 pr-4 rounded-lg bg-muted/50 border border-white/10 text-sm focus:outline-none focus:border-primary"
-                data-testid="search-input"
-              />
-            </div>
+            <h2 className="text-lg font-medium text-foreground">Dashboard</h2>
           </div>
 
           <div className="flex items-center gap-4">
