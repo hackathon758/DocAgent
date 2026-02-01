@@ -268,6 +268,18 @@ frontend:
         agent: "main"
         comment: "Added Export DOCX button that downloads Word document when documentation is complete"
 
+  - task: "Document Preview Modal"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/components/DocumentPreviewModal.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Added DocumentPreviewModal component with: Table of Contents, expandable file sections, copy to clipboard for docstrings/examples/diagrams, Expand All/Collapse All buttons, Export as DOCX button. Preview button appears after documentation generation completes."
+
 metadata:
   created_by: "main_agent"
   version: "1.0"
