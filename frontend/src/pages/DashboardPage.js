@@ -53,6 +53,7 @@ const DashboardPage = () => {
   const [currentJobId, setCurrentJobId] = useState(null);
   const [jobStatus, setJobStatus] = useState(null);
   const [documentation, setDocumentation] = useState(null);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
   const pollIntervalRef = useRef(null);
 
   useEffect(() => {
