@@ -557,6 +557,15 @@ const DashboardPage = () => {
           </div>
         </main>
       </div>
+
+      {/* Document Preview Modal */}
+      <DocumentPreviewModal
+        isOpen={showPreviewModal}
+        onClose={() => setShowPreviewModal(false)}
+        documentation={documentation}
+        repoName={jobStatus?.repo_name || 'Repository'}
+        onExport={handleExportDocx}
+      />
     </div>
   );
 };
