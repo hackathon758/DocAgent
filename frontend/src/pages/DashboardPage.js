@@ -11,7 +11,6 @@ import {
   FileText,
   FolderGit2,
   Settings,
-  Clock,
   CheckCircle2,
   AlertCircle,
   Loader2,
