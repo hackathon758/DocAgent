@@ -69,6 +69,10 @@ const DocumentationPage = () => {
   const [filterRepo, setFilterRepo] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState('grid');
+  const [diagramSvg, setDiagramSvg] = useState('');
+  const [diagramError, setDiagramError] = useState(null);
+  const [diagramLoading, setDiagramLoading] = useState(false);
+  const diagramContainerRef = useRef(null);
 
   useEffect(() => {
     fetchDocumentation();
