@@ -159,37 +159,6 @@ const DashboardPage = () => {
     { path: '/settings', icon: Settings, label: 'Settings' },
   ];
 
-  const statCards = [
-    {
-      title: 'Repositories',
-      value: analytics?.total_repositories || 0,
-      icon: FolderGit2,
-      color: 'text-blue-400',
-      bgColor: 'bg-blue-400/10'
-    },
-    {
-      title: 'Documentation',
-      value: analytics?.total_documentation || 0,
-      icon: FileText,
-      color: 'text-purple-400',
-      bgColor: 'bg-purple-400/10'
-    },
-    {
-      title: 'Avg Quality',
-      value: `${analytics?.average_quality_score || 0}%`,
-      icon: TrendingUp,
-      color: 'text-green-400',
-      bgColor: 'bg-green-400/10'
-    },
-    {
-      title: 'Jobs Run',
-      value: analytics?.total_jobs || 0,
-      icon: Zap,
-      color: 'text-orange-400',
-      bgColor: 'bg-orange-400/10'
-    }
-  ];
-
   const agents = [
     { id: 'reader', name: 'Reader Agent', icon: Code, description: 'Analyzing code structure' },
     { id: 'searcher', name: 'Searcher Agent', icon: Search, description: 'Gathering context' },
