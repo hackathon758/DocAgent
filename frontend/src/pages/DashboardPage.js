@@ -453,7 +453,7 @@ const DashboardPage = () => {
                           <div>
                             <p className="font-medium text-green-400">Documentation Complete!</p>
                             <p className="text-sm text-muted-foreground">
-                              Generated documentation for {jobStatus.total_files} files. Click "Export DOCX" to download.
+                              Generated documentation for {jobStatus.total_files} files. Click &quot;Export DOCX&quot; to download.
                             </p>
                           </div>
                         </motion.div>
