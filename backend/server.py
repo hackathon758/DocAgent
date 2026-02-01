@@ -1425,40 +1425,44 @@ async def list_ai_models():
         "installed_models": installed_models,
         "cloud_models": [
             {
-                "id": "Qwen/Qwen2.5-Coder-0.5B-Instruct",
-                "name": "Qwen 2.5 Coder 0.5B (Cloud)",
-                "description": "Fast code-focused model via Bytez API - VERIFIED WORKING",
+                "id": "Salesforce/codet5p-16b",
+                "name": "CodeT5+ 16B (Cloud)",
+                "description": "Salesforce CodeT5+ for code understanding - Reader Agent",
+                "tasks": ["code-analysis", "code-understanding", "documentation"],
+                "status": "available",
+                "free": True,
+                "cloud": True,
+                "assigned_to": "reader"
+            },
+            {
+                "id": "Qwen/Qwen2.5-Coder-7B-Instruct",
+                "name": "Qwen 2.5 Coder 7B (Cloud)",
+                "description": "Qwen code model for search and context - Search Agent",
                 "tasks": ["code-analysis", "documentation", "code-generation"],
                 "status": "available",
                 "free": True,
-                "cloud": True
+                "cloud": True,
+                "assigned_to": "searcher"
             },
             {
-                "id": "HuggingFaceTB/SmolLM2-1.7B-Instruct",
-                "name": "SmolLM2 1.7B (Cloud)",
-                "description": "Efficient instruction-tuned model via Bytez API - VERIFIED WORKING",
-                "tasks": ["chat", "verification", "reasoning"],
+                "id": "bigcode/starcoder2-15b-instruct-v0.1",
+                "name": "StarCoder2 15B (Cloud)",
+                "description": "BigCode StarCoder2 for documentation writing - Writer Agent",
+                "tasks": ["code-generation", "documentation", "text-generation"],
                 "status": "available",
                 "free": True,
-                "cloud": True
+                "cloud": True,
+                "assigned_to": "writer"
             },
             {
-                "id": "HuggingFaceTB/SmolLM2-360M-Instruct",
-                "name": "SmolLM2 360M (Cloud)",
-                "description": "Ultra-fast model via Bytez API - VERIFIED WORKING",
-                "tasks": ["chat", "text-generation"],
+                "id": "meta-llama/Meta-Llama-3.1-8B-Instruct",
+                "name": "Llama 3.1 8B (Cloud)",
+                "description": "Meta Llama 3.1 for verification and diagrams - Verifier & Diagram Agents",
+                "tasks": ["chat", "verification", "reasoning", "documentation"],
                 "status": "available",
                 "free": True,
-                "cloud": True
-            },
-            {
-                "id": "microsoft/Phi-3-mini-4k-instruct",
-                "name": "Phi-3 Mini 4K (Cloud)",
-                "description": "Microsoft's efficient reasoning model via Bytez API - VERIFIED WORKING",
-                "tasks": ["chat", "documentation", "reasoning"],
-                "status": "available",
-                "free": True,
-                "cloud": True
+                "cloud": True,
+                "assigned_to": ["verifier", "diagram"]
             }
         ],
         "agent_assignments": {
