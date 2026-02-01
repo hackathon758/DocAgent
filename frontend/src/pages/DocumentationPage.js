@@ -127,6 +127,8 @@ const DocumentationPage = () => {
       setDiagramLoading(false);
     }
   }, []);
+
+  const fetchDocumentation = async () => {
     try {
       const response = await axios.get(`${API_URL}/api/documentation`);
       setDocumentation(response.data);
