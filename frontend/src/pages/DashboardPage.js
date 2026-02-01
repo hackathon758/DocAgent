@@ -10,15 +10,11 @@ import { toast } from 'sonner';
 import {
   FileText,
   FolderGit2,
-  BarChart3,
   Settings,
-  Plus,
-  ChevronRight,
   Clock,
   CheckCircle2,
   AlertCircle,
   Loader2,
-  TrendingUp,
   Zap,
   LogOut,
   User,
@@ -29,10 +25,8 @@ import {
   Play,
   Download,
   Eye,
-  BookOpen,
   Code,
   GitBranch,
-  Cpu,
   Bot
 } from 'lucide-react';
 import {
