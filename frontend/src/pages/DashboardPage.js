@@ -26,8 +26,10 @@ import {
   Eye,
   Code,
   GitBranch,
-  Bot
+  Bot,
+  FileSearch
 } from 'lucide-react';
+import DocumentPreviewModal from '@/components/DocumentPreviewModal';
 import {
   DropdownMenu,
   DropdownMenuContent,
