@@ -152,18 +152,6 @@ const DocumentationPage = () => {
     }
   };
 
-  const renderMermaid = async () => {
-    const element = document.getElementById('mermaid-diagram');
-    if (element && selectedDoc?.diagrams?.[0]?.mermaid_code) {
-      element.innerHTML = selectedDoc.diagrams[0].mermaid_code;
-      try {
-        await mermaid.run({ nodes: [element] });
-      } catch (e) {
-        console.error('Mermaid render error:', e);
-      }
-    }
-  };
-
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
     toast.success('Copied to clipboard!');
