@@ -1769,12 +1769,18 @@ def render_mermaid_to_image(mermaid_code: str) -> Optional[io.BytesIO]:
         
         png_path = mmd_path.replace('.mmd', '.png')
         
+        # Create puppeteer config if it doesn't exist
+        puppeteer_config_path = '/tmp/puppeteer-config.json'
+        if not os.path.exists(puppeteer_config_path):
+            with open(puppeteer_config_path, 'w') as f:
+                f.write('{"executablePath": "/usr/bin/chromium", "args": ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]}')
+        
         # Run mmdc to convert Mermaid to PNG
         result = subprocess.run(
-            ['mmdc', '-i', mmd_path, '-o', png_path, '-b', 'white', '-w', '800', '-H', '600'],
+            ['mmdc', '-i', mmd_path, '-o', png_path, '-b', 'white', '-w', '800', '-H', '600', '-p', puppeteer_config_path],
             capture_output=True,
             text=True,
-            timeout=30
+            timeout=60
         )
         
         # Read the generated PNG
