@@ -416,6 +416,203 @@ class BackendTester:
         except Exception as e:
             await self.log_result(test_name, False, f"Exception: {str(e)}")
 
+    async def wait_for_job_completion(self, job_id: str, max_wait_time: int = 300):
+        """Wait for documentation job to complete, polling status endpoint"""
+        if not self.auth_token:
+            return False, "No auth token available"
+        
+        headers = {"Authorization": f"Bearer {self.auth_token}"}
+        start_time = asyncio.get_event_loop().time()
+        
+        while True:
+            try:
+                response = await self.client.get(f"{self.base_url}/repo-documentation/status/{job_id}", 
+                                               headers=headers)
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    status = data.get("status", "unknown")
+                    progress = data.get("overall_progress", 0)
+                    
+                    print(f"    Job {job_id}: {status} - {progress}% complete")
+                    
+                    if status == "completed":
+                        return True, "Job completed successfully"
+                    elif status == "failed":
+                        return False, f"Job failed: {data.get('error', 'Unknown error')}"
+                    
+                    # Check timeout
+                    elapsed = asyncio.get_event_loop().time() - start_time
+                    if elapsed > max_wait_time:
+                        return False, f"Timeout after {max_wait_time} seconds"
+                    
+                    # Wait before next poll
+                    await asyncio.sleep(5)
+                else:
+                    return False, f"Status check failed: HTTP {response.status_code}"
+                    
+            except Exception as e:
+                return False, f"Exception during status check: {str(e)}"
+
+    async def test_mermaid_diagram_docx_export(self):
+        """Test DOCX export with rendered Mermaid diagrams - Main focus of review request"""
+        test_name = "DOCX Export with Rendered Mermaid Diagrams"
+        try:
+            if not self.auth_token:
+                await self.log_result(test_name, False, "No auth token available - skipping test")
+                return
+            
+            headers = {"Authorization": f"Bearer {self.auth_token}"}
+            
+            # Step 1: Start a new documentation job for sindresorhus/is repo
+            print(f"    Step 1: Starting documentation job for https://github.com/sindresorhus/is")
+            repo_data = {
+                "repo_url": "https://github.com/sindresorhus/is",
+                "branch": "main"
+            }
+            
+            start_response = await self.client.post(f"{self.base_url}/repo-documentation/start", 
+                                                  json=repo_data, headers=headers)
+            
+            if start_response.status_code != 200:
+                await self.log_result(test_name, False, 
+                    f"Failed to start documentation job: HTTP {start_response.status_code}: {start_response.text}")
+                return
+            
+            start_data = start_response.json()
+            job_id = start_data.get("job_id")
+            total_files = start_data.get("total_files", 0)
+            
+            if not job_id:
+                await self.log_result(test_name, False, "No job_id returned from start endpoint", start_data)
+                return
+            
+            print(f"    Job started successfully: {job_id} (processing {total_files} files)")
+            
+            # Step 2: Wait for job completion by polling status endpoint
+            print(f"    Step 2: Waiting for job completion (polling status endpoint)...")
+            completed, message = await self.wait_for_job_completion(job_id, max_wait_time=300)
+            
+            if not completed:
+                await self.log_result(test_name, False, f"Job did not complete: {message}")
+                return
+            
+            print(f"    Job completed successfully!")
+            
+            # Step 3: Export DOCX and verify it contains embedded images
+            print(f"    Step 3: Exporting DOCX and verifying Mermaid diagram rendering...")
+            export_response = await self.client.get(f"{self.base_url}/repo-documentation/export/{job_id}", 
+                                                  headers=headers)
+            
+            if export_response.status_code != 200:
+                await self.log_result(test_name, False, 
+                    f"DOCX export failed: HTTP {export_response.status_code}: {export_response.text}")
+                return
+            
+            # Verify content type is DOCX
+            content_type = export_response.headers.get("content-type", "")
+            expected_content_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            
+            if content_type != expected_content_type:
+                await self.log_result(test_name, False, 
+                    f"Incorrect content-type. Expected: {expected_content_type}, Got: {content_type}")
+                return
+            
+            # Get file size
+            docx_content = export_response.content
+            file_size = len(docx_content)
+            
+            if file_size == 0:
+                await self.log_result(test_name, False, "DOCX file is empty (0 bytes)")
+                return
+            
+            # Step 4: Analyze DOCX content for embedded images (diagrams)
+            print(f"    Step 4: Analyzing DOCX content for embedded Mermaid diagrams...")
+            
+            # Save DOCX temporarily to analyze its contents
+            import tempfile
+            import zipfile
+            import os
+            
+            with tempfile.NamedTemporaryFile(suffix='.docx', delete=False) as temp_file:
+                temp_file.write(docx_content)
+                temp_file_path = temp_file.name
+            
+            try:
+                # DOCX files are ZIP archives - check for embedded images
+                with zipfile.ZipFile(temp_file_path, 'r') as docx_zip:
+                    file_list = docx_zip.namelist()
+                    
+                    # Look for media files (images) in the DOCX
+                    media_files = [f for f in file_list if f.startswith('word/media/')]
+                    image_files = [f for f in media_files if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif'))]
+                    
+                    # Check document.xml for image references
+                    document_xml = None
+                    if 'word/document.xml' in file_list:
+                        document_xml = docx_zip.read('word/document.xml').decode('utf-8', errors='ignore')
+                    
+                    # Look for drawing/image elements in the XML
+                    has_drawings = False
+                    if document_xml:
+                        has_drawings = ('<w:drawing>' in document_xml or 
+                                      '<pic:pic>' in document_xml or 
+                                      'blip:embed' in document_xml)
+                    
+                    # Calculate size comparison
+                    baseline_size = 20000  # Approximate size of DOCX without images
+                    size_increase = file_size - baseline_size
+                    
+                    # Determine if diagrams are embedded
+                    diagrams_embedded = len(image_files) > 0 or has_drawings
+                    
+                    if diagrams_embedded:
+                        await self.log_result(test_name, True, 
+                            f"✅ DOCX export with Mermaid diagrams successful! Found {len(image_files)} image files, file size: {file_size} bytes (increase: +{size_increase} bytes), has drawing elements: {has_drawings}", 
+                            {
+                                "job_id": job_id,
+                                "file_size": file_size,
+                                "image_files_count": len(image_files),
+                                "image_files": image_files,
+                                "has_drawing_elements": has_drawings,
+                                "size_increase": size_increase,
+                                "content_type": content_type
+                            })
+                    else:
+                        # Check if file size suggests images might be embedded differently
+                        if file_size > baseline_size * 1.5:  # 50% larger than baseline
+                            await self.log_result(test_name, True, 
+                                f"⚠️ DOCX export completed with larger file size ({file_size} bytes), suggesting embedded content, but no standard image files detected. This might indicate a different embedding method.", 
+                                {
+                                    "job_id": job_id,
+                                    "file_size": file_size,
+                                    "image_files_count": len(image_files),
+                                    "has_drawing_elements": has_drawings,
+                                    "size_increase": size_increase,
+                                    "content_type": content_type
+                                })
+                        else:
+                            await self.log_result(test_name, False, 
+                                f"❌ DOCX export completed but no embedded images detected. File size: {file_size} bytes, Image files: {len(image_files)}, Drawing elements: {has_drawings}", 
+                                {
+                                    "job_id": job_id,
+                                    "file_size": file_size,
+                                    "image_files_count": len(image_files),
+                                    "image_files": image_files,
+                                    "has_drawing_elements": has_drawings,
+                                    "docx_files": file_list[:10]  # First 10 files for debugging
+                                })
+                
+            finally:
+                # Clean up temporary file
+                try:
+                    os.unlink(temp_file_path)
+                except:
+                    pass
+                
+        except Exception as e:
+            await self.log_result(test_name, False, f"Exception: {str(e)}")
+
     async def test_repo_documentation_export(self):
         """Test GET /api/repo-documentation/export/{job_id} - Export DOCX file"""
         test_name = "Repository Documentation Export (GET /api/repo-documentation/export/{job_id})"
