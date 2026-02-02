@@ -380,6 +380,7 @@ const DocumentPreviewModal = ({ isOpen, onClose, documentation, repoName, onExpo
                                 size="sm"
                                 onClick={() => copyToClipboard(doc.diagram, `diagram-${index}`)}
                                 className="h-7 px-2"
+                                title="Copy Mermaid code"
                               >
                                 {copiedIndex === `diagram-${index}` ? (
                                   <Check className="w-3 h-3 text-green-400" />
@@ -388,9 +389,7 @@ const DocumentPreviewModal = ({ isOpen, onClose, documentation, repoName, onExpo
                                 )}
                               </Button>
                             </div>
-                            <pre className="text-sm bg-purple-500/10 p-4 rounded-lg overflow-x-auto whitespace-pre-wrap text-purple-300 font-mono border border-purple-500/20">
-                              {doc.diagram}
-                            </pre>
+                            <MermaidDiagram code={doc.diagram} index={index} />
                           </div>
                         )}
 
