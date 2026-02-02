@@ -12,7 +12,7 @@ import os
 from datetime import datetime
 
 # Get backend URL from frontend .env file
-BACKEND_URL = "https://mermaid-to-docs.preview.emergentagent.com/api"
+BACKEND_URL = "https://repo-central-3.preview.emergentagent.com/api"
 
 class MermaidDiagramTester:
     def __init__(self):
