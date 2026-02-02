@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
+import mermaid from 'mermaid';
 import { 
   X, 
   FileText, 
@@ -13,9 +14,100 @@ import {
   Sparkles,
   CheckCircle2,
   Copy,
-  Check
+  Check,
+  AlertCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
+
+// Initialize mermaid
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'dark',
+  securityLevel: 'loose',
+  fontFamily: 'Inter, sans-serif',
+  flowchart: {
+    useMaxWidth: true,
+    htmlLabels: true,
+    curve: 'basis'
+  },
+  sequence: {
+    diagramMarginX: 50,
+    diagramMarginY: 10,
+    useMaxWidth: true
+  }
+});
+
+// Mermaid Diagram Renderer Component
+const MermaidDiagram = ({ code, index }) => {
+  const [svg, setSvg] = useState('');
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const renderDiagram = async () => {
+      if (!code) {
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        // Clean up the mermaid code
+        let cleanCode = code
+          .replace(/\\n/g, '\n')
+          .replace(/\\t/g, '  ')
+          .trim();
+
+        const uniqueId = `mermaid-preview-${index}-${Date.now()}`;
+        const { svg: renderedSvg } = await mermaid.render(uniqueId, cleanCode);
+        setSvg(renderedSvg);
+      } catch (err) {
+        console.error('Mermaid render error:', err);
+        setError(err.message || 'Failed to render diagram');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    renderDiagram();
+  }, [code, index]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-8 bg-purple-500/10 rounded-lg border border-purple-500/20">
+        <div className="animate-spin w-6 h-6 border-2 border-purple-400 border-t-transparent rounded-full" />
+        <span className="ml-3 text-purple-300">Rendering diagram...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 text-amber-400 text-sm">
+          <AlertCircle className="w-4 h-4" />
+          <span>Could not render diagram: {error}</span>
+        </div>
+        <pre className="text-sm bg-purple-500/10 p-4 rounded-lg overflow-x-auto whitespace-pre-wrap text-purple-300 font-mono border border-purple-500/20">
+          {code}
+        </pre>
+      </div>
+    );
+  }
+
+  if (svg) {
+    return (
+      <div 
+        className="bg-white rounded-lg p-4 overflow-auto"
+        dangerouslySetInnerHTML={{ __html: svg }}
+      />
+    );
+  }
+
+  return null;
+};
 
 const DocumentPreviewModal = ({ isOpen, onClose, documentation, repoName, onExport }) => {
   const [expandedSections, setExpandedSections] = useState({});
