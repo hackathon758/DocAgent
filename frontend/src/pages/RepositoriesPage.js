@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import {
   Select,
   SelectContent,
@@ -21,8 +23,11 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import Sidebar from '@/components/Sidebar';
+import TopBar from '@/components/TopBar';
 import {
   FileText,
   FolderGit2,
@@ -36,11 +41,19 @@ import {
   Code,
   Clock,
   Zap,
-  Home,
-  LogOut,
-  User,
-  Bell,
-  Search
+  CheckCircle2,
+  AlertCircle,
+  Search,
+  Filter,
+  LayoutGrid,
+  List,
+  Webhook,
+  Link2,
+  ArrowRight,
+  ChevronRight,
+  Upload,
+  FolderOpen,
+  Globe
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -52,13 +65,43 @@ import {
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
+// Provider icons and colors
+const providers = {
+  github: { 
+    name: 'GitHub', 
+    icon: Github, 
+    color: 'bg-gray-800 hover:bg-gray-700',
+    description: 'Connect your GitHub repositories'
+  },
+  gitlab: { 
+    name: 'GitLab', 
+    icon: Globe, 
+    color: 'bg-orange-600 hover:bg-orange-500',
+    description: 'Connect your GitLab repositories'
+  },
+  bitbucket: { 
+    name: 'Bitbucket', 
+    icon: Globe, 
+    color: 'bg-blue-600 hover:bg-blue-500',
+    description: 'Connect your Bitbucket repositories'
+  }
+};
+
 const RepositoriesPage = () => {
-  const { user, logout, token } = useAuth();
+  const { user, token } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [repositories, setRepositories] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showConnectWizard, setShowConnectWizard] = useState(false);
+  const [wizardStep, setWizardStep] = useState(1);
+  const [selectedProvider, setSelectedProvider] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterProvider, setFilterProvider] = useState('all');
+  const [viewMode, setViewMode] = useState('grid');
+  const [connecting, setConnecting] = useState(false);
+  
+  // Manual repo form
   const [formData, setFormData] = useState({
     name: '',
     repo_url: '',
@@ -66,7 +109,10 @@ const RepositoriesPage = () => {
     branch: 'main',
     language: 'python'
   });
-  const [submitting, setSubmitting] = useState(false);
+
+  // Mock available repos after OAuth
+  const [availableRepos, setAvailableRepos] = useState([]);
+  const [selectedRepos, setSelectedRepos] = useState([]);
 
   useEffect(() => {
     fetchRepositories();
@@ -86,21 +132,81 @@ const RepositoriesPage = () => {
     }
   };
 
-  const handleAddRepository = async (e) => {
+  const handleOAuthConnect = (provider) => {
+    setSelectedProvider(provider);
+    setConnecting(true);
+    
+    // Simulate OAuth flow - in production this would redirect to OAuth provider
+    setTimeout(() => {
+      // Mock available repos after OAuth
+      const mockRepos = [
+        { id: 1, name: 'my-awesome-project', full_name: 'user/my-awesome-project', language: 'Python', stars: 125, updated: '2 days ago' },
+        { id: 2, name: 'react-dashboard', full_name: 'user/react-dashboard', language: 'TypeScript', stars: 89, updated: '1 week ago' },
+        { id: 3, name: 'api-service', full_name: 'user/api-service', language: 'JavaScript', stars: 45, updated: '3 days ago' },
+        { id: 4, name: 'ml-pipeline', full_name: 'user/ml-pipeline', language: 'Python', stars: 234, updated: '5 hours ago' },
+        { id: 5, name: 'docs-generator', full_name: 'user/docs-generator', language: 'Go', stars: 67, updated: '1 day ago' },
+      ];
+      setAvailableRepos(mockRepos);
+      setConnecting(false);
+      setWizardStep(2);
+    }, 2000);
+  };
+
+  const toggleRepoSelection = (repoId) => {
+    setSelectedRepos(prev => 
+      prev.includes(repoId) 
+        ? prev.filter(id => id !== repoId)
+        : [...prev, repoId]
+    );
+  };
+
+  const handleImportRepos = async () => {
+    setConnecting(true);
+    
+    // Simulate import
+    setTimeout(() => {
+      const newRepos = availableRepos
+        .filter(r => selectedRepos.includes(r.id))
+        .map(r => ({
+          id: `repo-${Date.now()}-${r.id}`,
+          name: r.name,
+          repo_url: `https://github.com/${r.full_name}`,
+          provider: selectedProvider,
+          branch: 'main',
+          language: r.language.toLowerCase(),
+          coverage_percentage: Math.floor(Math.random() * 40) + 30,
+          components_count: Math.floor(Math.random() * 50) + 10,
+          webhook_active: true,
+          last_synced_at: new Date().toISOString()
+        }));
+      
+      setRepositories([...repositories, ...newRepos]);
+      setShowConnectWizard(false);
+      setWizardStep(1);
+      setSelectedProvider(null);
+      setSelectedRepos([]);
+      setConnecting(false);
+      toast.success(`Successfully imported ${newRepos.length} repositories`);
+    }, 1500);
+  };
+
+  const handleManualAdd = async (e) => {
     e.preventDefault();
-    setSubmitting(true);
+    setConnecting(true);
+    
     try {
       const response = await axios.post(`${API_URL}/api/repositories`, formData, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setRepositories([...repositories, response.data]);
-      setShowAddDialog(false);
+      setShowConnectWizard(false);
+      setWizardStep(1);
       setFormData({ name: '', repo_url: '', provider: 'github', branch: 'main', language: 'python' });
       toast.success('Repository added successfully!');
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to add repository');
     } finally {
-      setSubmitting(false);
+      setConnecting(false);
     }
   };
 
@@ -118,158 +224,127 @@ const RepositoriesPage = () => {
     }
   };
 
-  const handleLogout = () => {
-    logout();
-    navigate('/');
-    toast.success('Logged out successfully');
+  const handleSyncRepo = async (repoId) => {
+    toast.info('Syncing repository...');
+    // Mock sync
+    setTimeout(() => {
+      setRepositories(repositories.map(r => 
+        r.id === repoId ? { ...r, last_synced_at: new Date().toISOString() } : r
+      ));
+      toast.success('Repository synced successfully');
+    }, 1500);
   };
 
-  const navItems = [
-    { path: '/dashboard', icon: Home, label: 'Dashboard' },
-    { path: '/repositories', icon: FolderGit2, label: 'Repositories' },
-    { path: '/documentation', icon: FileText, label: 'Documentation' },
-    { path: '/generate', icon: Zap, label: 'Generate' },
-    { path: '/settings', icon: Settings, label: 'Settings' },
-  ];
+  const filteredRepos = repositories.filter(repo => {
+    const matchesSearch = repo.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesProvider = filterProvider === 'all' || repo.provider === filterProvider;
+    return matchesSearch && matchesProvider;
+  });
 
   const languages = ['python', 'javascript', 'typescript', 'java', 'go', 'rust', 'cpp', 'csharp'];
 
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Sidebar */}
-      <aside className="w-64 border-r border-white/5 bg-card/50 flex flex-col">
-        <div className="p-6 border-b border-white/5">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center">
-              <FileText className="w-5 h-5 text-white" />
-            </div>
-            <span className="font-heading font-bold text-xl">DocAgent</span>
-          </Link>
-        </div>
+      <Sidebar />
 
-        <nav className="flex-1 p-4">
-          <ul className="space-y-1">
-            {navItems.map((item) => {
-              const isActive = location.pathname === item.path;
-              return (
-                <li key={item.path}>
-                  <Link
-                    to={item.path}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                      isActive 
-                        ? 'bg-primary/10 text-primary' 
-                        : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
-                    }`}
-                  >
-                    <item.icon className="w-5 h-5" />
-                    <span className="font-medium">{item.label}</span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
-
-        <div className="p-4 border-t border-white/5">
-          <div className="bg-muted/50 rounded-lg p-4">
-            <p className="text-sm font-medium text-foreground mb-1">Current Plan</p>
-            <p className="text-xs text-muted-foreground capitalize">{user?.subscription_tier || 'Free'} Tier</p>
-            <Link to="/pricing">
-              <Button variant="outline" size="sm" className="w-full mt-3 border-white/10">
-                Upgrade
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </aside>
-
-      {/* Main Content */}
       <div className="flex-1 flex flex-col">
-        {/* Top Bar */}
-        <header className="h-16 border-b border-white/5 bg-card/50 flex items-center justify-between px-6">
-          <div className="flex items-center gap-4">
-            <h1 className="text-xl font-semibold">Repositories</h1>
-          </div>
+        <TopBar title="Repositories" />
 
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="w-5 h-5" />
-            </Button>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center">
-                    <User className="w-4 h-4 text-primary" />
-                  </div>
-                  <span className="font-medium">{user?.name}</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem onClick={() => navigate('/settings')}>
-                  <Settings className="w-4 h-4 mr-2" />
-                  Settings
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="text-red-400">
-                  <LogOut className="w-4 h-4 mr-2" />
-                  Log out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </header>
-
-        {/* Page Content */}
         <main className="flex-1 p-6 overflow-auto">
-          <div className="max-w-6xl mx-auto">
+          <div className="max-w-7xl mx-auto">
             {/* Header */}
             <div className="flex items-center justify-between mb-8">
               <div>
-                <h2 className="text-2xl font-bold">Your Repositories</h2>
+                <h1 className="text-2xl font-bold">Your Repositories</h1>
                 <p className="text-muted-foreground mt-1">Connect and manage your code repositories</p>
               </div>
-              <Button onClick={() => setShowAddDialog(true)} className="gap-2">
+              <Button onClick={() => setShowConnectWizard(true)} className="gap-2">
                 <Plus className="w-4 h-4" />
-                Add Repository
+                Connect Repository
               </Button>
             </div>
 
-            {/* Repository Grid */}
+            {/* Filters */}
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-4">
+                <div className="relative w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search repositories..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 bg-muted/50 border-white/10"
+                  />
+                </div>
+                <Select value={filterProvider} onValueChange={setFilterProvider}>
+                  <SelectTrigger className="w-40 bg-muted/50 border-white/10">
+                    <Filter className="w-4 h-4 mr-2" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Providers</SelectItem>
+                    <SelectItem value="github">GitHub</SelectItem>
+                    <SelectItem value="gitlab">GitLab</SelectItem>
+                    <SelectItem value="bitbucket">Bitbucket</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+                  size="icon"
+                  onClick={() => setViewMode('grid')}
+                >
+                  <LayoutGrid className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant={viewMode === 'list' ? 'secondary' : 'ghost'}
+                  size="icon"
+                  onClick={() => setViewMode('list')}
+                >
+                  <List className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Repository Grid/List */}
             {loading ? (
               <div className="flex items-center justify-center py-12">
                 <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
               </div>
-            ) : repositories.length === 0 ? (
+            ) : filteredRepos.length === 0 ? (
               <Card className="border-dashed">
                 <CardContent className="py-12 text-center">
-                  <FolderGit2 className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                  <FolderGit2 className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
                   <h3 className="text-lg font-medium mb-2">No repositories yet</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Connect your first repository to start generating documentation
+                  <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                    Connect your first repository to start generating AI-powered documentation
                   </p>
-                  <Button onClick={() => setShowAddDialog(true)} className="gap-2">
+                  <Button onClick={() => setShowConnectWizard(true)} className="gap-2">
                     <Plus className="w-4 h-4" />
-                    Add Repository
+                    Connect Repository
                   </Button>
                 </CardContent>
               </Card>
-            ) : (
+            ) : viewMode === 'grid' ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <AnimatePresence>
-                  {repositories.map((repo) => (
+                  {filteredRepos.map((repo) => (
                     <motion.div
                       key={repo.id}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -20 }}
                     >
-                      <Card className="group hover:border-primary/50 transition-colors">
+                      <Card className="group hover:border-primary/50 transition-all duration-300">
                         <CardHeader className="pb-3">
                           <div className="flex items-start justify-between">
                             <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                                <Github className="w-5 h-5 text-primary" />
+                              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                                repo.provider === 'github' ? 'bg-gray-800' :
+                                repo.provider === 'gitlab' ? 'bg-orange-600' : 'bg-blue-600'
+                              }`}>
+                                <Github className="w-5 h-5 text-white" />
                               </div>
                               <div>
                                 <CardTitle className="text-base">{repo.name}</CardTitle>
@@ -278,14 +353,18 @@ const RepositoriesPage = () => {
                             </div>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
                                   <Settings className="w-4 h-4" />
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 <DropdownMenuItem onClick={() => window.open(repo.repo_url, '_blank')}>
                                   <ExternalLink className="w-4 h-4 mr-2" />
-                                  Open in GitHub
+                                  Open in {repo.provider}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleSyncRepo(repo.id)}>
+                                  <RefreshCw className="w-4 h-4 mr-2" />
+                                  Sync Now
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => navigate(`/generate?repo=${repo.id}`)}>
                                   <Zap className="w-4 h-4 mr-2" />
@@ -305,35 +384,43 @@ const RepositoriesPage = () => {
                         </CardHeader>
                         <CardContent>
                           <div className="space-y-3">
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <GitBranch className="w-4 h-4" />
-                              <span>{repo.branch}</span>
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <GitBranch className="w-4 h-4" />
+                                {repo.branch}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Code className="w-4 h-4" />
+                                {repo.language}
+                              </span>
                             </div>
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <Code className="w-4 h-4" />
-                              <span className="capitalize">{repo.language}</span>
+                            
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="text-xs">
+                                <FileText className="w-3 h-3 mr-1" />
+                                {repo.components_count || 0} components
+                              </Badge>
+                              {repo.webhook_active && (
+                                <Badge variant="outline" className="text-xs bg-green-500/10 text-green-400 border-green-500/30">
+                                  <Webhook className="w-3 h-3 mr-1" />
+                                  Webhook
+                                </Badge>
+                              )}
                             </div>
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <FileText className="w-4 h-4" />
-                              <span>{repo.components_count || 0} components documented</span>
-                            </div>
+
                             {repo.last_synced_at && (
                               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                 <Clock className="w-3 h-3" />
-                                <span>Last synced: {new Date(repo.last_synced_at).toLocaleDateString()}</span>
+                                Last synced: {new Date(repo.last_synced_at).toLocaleDateString()}
                               </div>
                             )}
-                          </div>
-                          <div className="mt-4 pt-4 border-t border-white/5">
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs text-muted-foreground">Coverage</span>
-                              <span className="text-xs font-medium">{repo.coverage_percentage || 0}%</span>
-                            </div>
-                            <div className="mt-2 h-1.5 bg-muted rounded-full overflow-hidden">
-                              <div 
-                                className="h-full bg-primary rounded-full transition-all"
-                                style={{ width: `${repo.coverage_percentage || 0}%` }}
-                              />
+
+                            <div className="pt-3 border-t border-white/5">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs text-muted-foreground">Coverage</span>
+                                <span className="text-xs font-medium">{repo.coverage_percentage || 0}%</span>
+                              </div>
+                              <Progress value={repo.coverage_percentage || 0} className="h-1.5" />
                             </div>
                           </div>
                         </CardContent>
@@ -342,104 +429,256 @@ const RepositoriesPage = () => {
                   ))}
                 </AnimatePresence>
               </div>
+            ) : (
+              // List View
+              <Card className="bg-card border-white/5">
+                <div className="divide-y divide-white/5">
+                  {filteredRepos.map((repo) => (
+                    <div key={repo.id} className="p-4 hover:bg-muted/30 transition-colors">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                            repo.provider === 'github' ? 'bg-gray-800' :
+                            repo.provider === 'gitlab' ? 'bg-orange-600' : 'bg-blue-600'
+                          }`}>
+                            <Github className="w-5 h-5 text-white" />
+                          </div>
+                          <div>
+                            <p className="font-medium">{repo.name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {repo.provider} • {repo.branch} • {repo.language}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-6">
+                          <div className="text-right">
+                            <p className="text-sm font-medium">{repo.coverage_percentage || 0}%</p>
+                            <p className="text-xs text-muted-foreground">Coverage</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-medium">{repo.components_count || 0}</p>
+                            <p className="text-xs text-muted-foreground">Components</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button variant="ghost" size="sm" onClick={() => handleSyncRepo(repo.id)}>
+                              <RefreshCw className="w-4 h-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => navigate(`/generate?repo=${repo.id}`)}>
+                              <Zap className="w-4 h-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleDeleteRepository(repo.id)} className="text-red-400">
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
             )}
           </div>
         </main>
       </div>
 
-      {/* Add Repository Dialog */}
-      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent className="sm:max-w-md">
+      {/* Connect Repository Wizard */}
+      <Dialog open={showConnectWizard} onOpenChange={setShowConnectWizard}>
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Add Repository</DialogTitle>
+            <DialogTitle>Connect Repository</DialogTitle>
             <DialogDescription>
-              Connect a repository to start generating documentation
+              {wizardStep === 1 && 'Choose how you want to connect your repository'}
+              {wizardStep === 2 && `Select repositories from ${selectedProvider}`}
+              {wizardStep === 3 && 'Configure repository settings'}
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleAddRepository}>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Repository Name</Label>
-                <Input
-                  id="name"
-                  placeholder="my-awesome-project"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="repo_url">Repository URL</Label>
-                <Input
-                  id="repo_url"
-                  placeholder="https://github.com/username/repo"
-                  value={formData.repo_url}
-                  onChange={(e) => setFormData({ ...formData, repo_url: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="provider">Provider</Label>
-                  <Select
-                    value={formData.provider}
-                    onValueChange={(value) => setFormData({ ...formData, provider: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="github">GitHub</SelectItem>
-                      <SelectItem value="gitlab">GitLab</SelectItem>
-                      <SelectItem value="bitbucket">Bitbucket</SelectItem>
-                    </SelectContent>
-                  </Select>
+
+          {/* Step indicator */}
+          <div className="flex items-center justify-center gap-2 py-4">
+            {[1, 2, 3].map((step) => (
+              <div key={step} className="flex items-center">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                  wizardStep >= step ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                }`}>
+                  {wizardStep > step ? <CheckCircle2 className="w-5 h-5" /> : step}
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="branch">Branch</Label>
-                  <Input
-                    id="branch"
-                    placeholder="main"
-                    value={formData.branch}
-                    onChange={(e) => setFormData({ ...formData, branch: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="language">Primary Language</Label>
-                <Select
-                  value={formData.language}
-                  onValueChange={(value) => setFormData({ ...formData, language: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {languages.map((lang) => (
-                      <SelectItem key={lang} value={lang} className="capitalize">
-                        {lang}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setShowAddDialog(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={submitting}>
-                {submitting ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                    Adding...
-                  </>
-                ) : (
-                  'Add Repository'
+                {step < 3 && (
+                  <ChevronRight className={`w-4 h-4 mx-2 ${wizardStep > step ? 'text-primary' : 'text-muted-foreground'}`} />
                 )}
-              </Button>
-            </DialogFooter>
-          </form>
+              </div>
+            ))}
+          </div>
+
+          {/* Step 1: Choose Provider */}
+          {wizardStep === 1 && (
+            <Tabs defaultValue="oauth" className="mt-4">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="oauth">OAuth Connect</TabsTrigger>
+                <TabsTrigger value="manual">Manual URL</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="oauth" className="space-y-4 mt-4">
+                <div className="grid grid-cols-1 gap-3">
+                  {Object.entries(providers).map(([key, provider]) => (
+                    <Button
+                      key={key}
+                      variant="outline"
+                      className={`h-auto p-4 justify-start gap-4 border-white/10 hover:border-primary/50 ${
+                        connecting && selectedProvider === key ? 'border-primary' : ''
+                      }`}
+                      onClick={() => handleOAuthConnect(key)}
+                      disabled={connecting}
+                    >
+                      <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${provider.color}`}>
+                        <provider.icon className="w-6 h-6 text-white" />
+                      </div>
+                      <div className="text-left flex-1">
+                        <p className="font-medium">Connect with {provider.name}</p>
+                        <p className="text-sm text-muted-foreground">{provider.description}</p>
+                      </div>
+                      {connecting && selectedProvider === key ? (
+                        <RefreshCw className="w-5 h-5 animate-spin text-primary" />
+                      ) : (
+                        <ArrowRight className="w-5 h-5 text-muted-foreground" />
+                      )}
+                    </Button>
+                  ))}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="manual" className="mt-4">
+                <form onSubmit={handleManualAdd} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Repository Name</Label>
+                    <Input
+                      placeholder="my-awesome-project"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Repository URL</Label>
+                    <Input
+                      placeholder="https://github.com/username/repo"
+                      value={formData.repo_url}
+                      onChange={(e) => setFormData({ ...formData, repo_url: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label>Provider</Label>
+                      <Select value={formData.provider} onValueChange={(v) => setFormData({ ...formData, provider: v })}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="github">GitHub</SelectItem>
+                          <SelectItem value="gitlab">GitLab</SelectItem>
+                          <SelectItem value="bitbucket">Bitbucket</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Branch</Label>
+                      <Input
+                        placeholder="main"
+                        value={formData.branch}
+                        onChange={(e) => setFormData({ ...formData, branch: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Language</Label>
+                      <Select value={formData.language} onValueChange={(v) => setFormData({ ...formData, language: v })}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {languages.map((lang) => (
+                            <SelectItem key={lang} value={lang} className="capitalize">
+                              {lang}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setShowConnectWizard(false)}>
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={connecting}>
+                      {connecting ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                          Adding...
+                        </>
+                      ) : (
+                        'Add Repository'
+                      )}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </TabsContent>
+            </Tabs>
+          )}
+
+          {/* Step 2: Select Repositories */}
+          {wizardStep === 2 && (
+            <div className="space-y-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input placeholder="Search repositories..." className="pl-10" />
+              </div>
+              
+              <div className="border border-white/10 rounded-lg max-h-64 overflow-y-auto">
+                {availableRepos.map((repo) => (
+                  <div
+                    key={repo.id}
+                    onClick={() => toggleRepoSelection(repo.id)}
+                    className={`p-3 flex items-center gap-3 cursor-pointer hover:bg-muted/50 border-b border-white/5 last:border-0 ${
+                      selectedRepos.includes(repo.id) ? 'bg-primary/10' : ''
+                    }`}
+                  >
+                    <div className={`w-5 h-5 rounded border flex items-center justify-center ${
+                      selectedRepos.includes(repo.id) ? 'bg-primary border-primary' : 'border-white/20'
+                    }`}>
+                      {selectedRepos.includes(repo.id) && <CheckCircle2 className="w-4 h-4 text-white" />}
+                    </div>
+                    <FolderGit2 className="w-5 h-5 text-muted-foreground" />
+                    <div className="flex-1">
+                      <p className="font-medium text-sm">{repo.name}</p>
+                      <p className="text-xs text-muted-foreground">{repo.full_name}</p>
+                    </div>
+                    <Badge variant="outline" className="text-xs">{repo.language}</Badge>
+                  </div>
+                ))}
+              </div>
+
+              <p className="text-sm text-muted-foreground">
+                {selectedRepos.length} repositories selected
+              </p>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => { setWizardStep(1); setSelectedProvider(null); }}>
+                  Back
+                </Button>
+                <Button onClick={handleImportRepos} disabled={selectedRepos.length === 0 || connecting}>
+                  {connecting ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      Importing...
+                    </>
+                  ) : (
+                    <>
+                      Import {selectedRepos.length} Repositories
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
