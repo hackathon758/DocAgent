@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import { Button } from '@/components/ui/button';
@@ -9,23 +9,18 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import Sidebar from '@/components/Sidebar';
+import TopBar from '@/components/TopBar';
 import {
   FileText,
   FolderGit2,
-  Settings,
   CheckCircle2,
   AlertCircle,
   Loader2,
   Zap,
-  LogOut,
-  User,
-  Bell,
-  Search,
-  Home,
   Github,
   Play,
   Download,
-  Eye,
   Code,
   GitBranch,
   Bot,
@@ -41,30 +36,16 @@ import {
   Cpu,
   RefreshCw,
   ExternalLink,
-  Star,
-  X
+  Star
 } from 'lucide-react';
 import DocumentPreviewModal from '@/components/DocumentPreviewModal';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 const HomeDashboardPage = () => {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
   
   // Dashboard state
   const [analytics, setAnalytics] = useState(null);
@@ -72,7 +53,6 @@ const HomeDashboardPage = () => {
   const [recentDocs, setRecentDocs] = useState([]);
   const [recentJobs, setRecentJobs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showNotifications, setShowNotifications] = useState(false);
   
   // Repository documentation state
   const [repoUrl, setRepoUrl] = useState('');
@@ -84,13 +64,8 @@ const HomeDashboardPage = () => {
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const pollIntervalRef = useRef(null);
 
-  // Mock notifications
-  const [notifications, setNotifications] = useState([
-    { id: 1, type: 'success', message: 'Documentation generated for auth.py', time: '5 min ago', read: false },
-    { id: 2, type: 'info', message: 'New repository synced: my-project', time: '1 hour ago', read: false },
-    { id: 3, type: 'warning', message: 'API rate limit warning (80% used)', time: '2 hours ago', read: true },
-    { id: 4, type: 'success', message: 'Batch documentation completed', time: '3 hours ago', read: true },
-  ]);
+  // Activity feed from jobs
+  const [activityFeed, setActivityFeed] = useState([]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -113,17 +88,29 @@ const HomeDashboardPage = () => {
       setRepositories(reposRes.data.slice(0, 5));
       setRecentDocs(docsRes.data.slice(0, 5));
       setRecentJobs(jobsRes.data.slice(0, 5));
+      
+      // Build activity feed from jobs
+      const activities = jobsRes.data.slice(0, 10).map((job, idx) => ({
+        id: job.id || idx,
+        type: job.status === 'completed' ? 'complete' : job.status === 'failed' ? 'error' : 'generate',
+        message: job.status === 'completed' 
+          ? `Documentation completed for ${job.repo_name || 'repository'}`
+          : job.status === 'failed'
+          ? `Failed to generate docs for ${job.repo_name || 'repository'}`
+          : `Processing ${job.repo_name || 'repository'}`,
+        time: job.created_at ? new Date(job.created_at).toLocaleString() : 'Recently',
+        icon: job.status === 'completed' ? CheckCircle2 : job.status === 'failed' ? AlertCircle : FileText,
+        color: job.status === 'completed' ? 'text-green-400' : job.status === 'failed' ? 'text-red-400' : 'text-blue-400'
+      }));
+      setActivityFeed(activities.length > 0 ? activities : [
+        { id: 1, type: 'info', message: 'Welcome to DocAgent!', time: 'Just now', icon: Star, color: 'text-primary' },
+        { id: 2, type: 'info', message: 'Connect a repository to get started', time: '', icon: FolderGit2, color: 'text-muted-foreground' }
+      ]);
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleLogout = () => {
-    logout();
-    navigate('/');
-    toast.success('Logged out successfully');
   };
 
   const handleStartGeneration = async () => {
@@ -206,34 +193,12 @@ const HomeDashboardPage = () => {
     }
   };
 
-  const markNotificationAsRead = (id) => {
-    setNotifications(notifications.map(n => 
-      n.id === id ? { ...n, read: true } : n
-    ));
-  };
-
-  const clearAllNotifications = () => {
-    setNotifications([]);
-    setShowNotifications(false);
-  };
-
-  const unreadCount = notifications.filter(n => !n.read).length;
-
-  const navItems = [
-    { path: '/dashboard', icon: Home, label: 'Dashboard' },
-    { path: '/repositories', icon: FolderGit2, label: 'Repositories' },
-    { path: '/documentation', icon: FileText, label: 'Documentation' },
-    { path: '/analytics', icon: BarChart3, label: 'Analytics' },
-    { path: '/generate', icon: Zap, label: 'Generate' },
-    { path: '/settings', icon: Settings, label: 'Settings' },
-  ];
-
   const agents = [
-    { id: 'reader', name: 'Reader Agent', icon: Code, description: 'Analyzing code structure' },
-    { id: 'searcher', name: 'Searcher Agent', icon: Search, description: 'Gathering context' },
-    { id: 'writer', name: 'Writer Agent', icon: FileText, description: 'Writing documentation' },
-    { id: 'verifier', name: 'Verifier Agent', icon: CheckCircle2, description: 'Verifying quality' },
-    { id: 'diagram', name: 'Diagram Agent', icon: GitBranch, description: 'Generating diagrams' },
+    { id: 'reader', name: 'Reader', icon: Code, description: 'Analyzing code' },
+    { id: 'searcher', name: 'Searcher', icon: FileSearch, description: 'Gathering context' },
+    { id: 'writer', name: 'Writer', icon: FileText, description: 'Writing docs' },
+    { id: 'verifier', name: 'Verifier', icon: CheckCircle2, description: 'Verifying quality' },
+    { id: 'diagram', name: 'Diagram', icon: GitBranch, description: 'Creating diagrams' },
   ];
 
   const getAgentStatus = (agentId) => {
@@ -253,155 +218,12 @@ const HomeDashboardPage = () => {
     { icon: Shield, label: 'Admin Panel', path: '/admin', color: 'bg-yellow-500/20 text-yellow-400' },
   ];
 
-  // Mock activity feed
-  const activityFeed = [
-    { id: 1, type: 'generate', message: 'Documentation generated for auth.py', time: '5 minutes ago', icon: FileText, color: 'text-blue-400' },
-    { id: 2, type: 'sync', message: 'Repository synced: my-project', time: '1 hour ago', icon: RefreshCw, color: 'text-green-400' },
-    { id: 3, type: 'export', message: 'Exported api-docs.docx', time: '2 hours ago', icon: Download, color: 'text-purple-400' },
-    { id: 4, type: 'connect', message: 'Connected new repository: auth-service', time: '3 hours ago', icon: Github, color: 'text-primary' },
-    { id: 5, type: 'complete', message: 'Batch documentation completed', time: '5 hours ago', icon: CheckCircle2, color: 'text-green-400' },
-  ];
-
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Sidebar */}
-      <aside className="w-64 border-r border-white/5 bg-card/50 flex flex-col">
-        <div className="p-6 border-b border-white/5">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center">
-              <FileText className="w-5 h-5 text-white" />
-            </div>
-            <span className="font-heading font-bold text-xl">DocAgent</span>
-          </Link>
-        </div>
+      <Sidebar />
 
-        <nav className="flex-1 p-4">
-          <ul className="space-y-1">
-            {navItems.map((item) => {
-              const isActive = location.pathname === item.path;
-              return (
-                <li key={item.path}>
-                  <Link
-                    to={item.path}
-                    data-testid={`nav-${item.label.toLowerCase()}`}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                      isActive 
-                        ? 'bg-primary/10 text-primary' 
-                        : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
-                    }`}
-                  >
-                    <item.icon className="w-5 h-5" />
-                    <span className="font-medium">{item.label}</span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
-
-        <div className="p-4 border-t border-white/5">
-          <div className="bg-muted/50 rounded-lg p-4">
-            <p className="text-sm font-medium text-foreground mb-1">Current Plan</p>
-            <p className="text-xs text-muted-foreground capitalize">{user?.subscription_tier || 'Free'} Tier</p>
-            <Link to="/pricing">
-              <Button variant="outline" size="sm" className="w-full mt-3 border-white/10">
-                Upgrade
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </aside>
-
-      {/* Main Content */}
       <div className="flex-1 flex flex-col">
-        {/* Top Bar */}
-        <header className="h-16 border-b border-white/5 bg-card/50 flex items-center justify-between px-6">
-          <div className="flex items-center gap-4">
-            <h2 className="text-lg font-medium text-foreground">Dashboard</h2>
-          </div>
-
-          <div className="flex items-center gap-4">
-            {/* Notifications */}
-            <Popover open={showNotifications} onOpenChange={setShowNotifications}>
-              <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon" className="relative" data-testid="notifications-btn">
-                  <Bell className="w-5 h-5" />
-                  {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary rounded-full flex items-center justify-center text-xs font-medium">
-                      {unreadCount}
-                    </span>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-80 p-0" align="end">
-                <div className="p-4 border-b border-white/5 flex items-center justify-between">
-                  <h3 className="font-medium">Notifications</h3>
-                  {notifications.length > 0 && (
-                    <Button variant="ghost" size="sm" onClick={clearAllNotifications} className="text-xs">
-                      Clear all
-                    </Button>
-                  )}
-                </div>
-                <ScrollArea className="h-[300px]">
-                  {notifications.length === 0 ? (
-                    <div className="p-8 text-center text-muted-foreground">
-                      <Bell className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">No notifications</p>
-                    </div>
-                  ) : (
-                    <div className="divide-y divide-white/5">
-                      {notifications.map((notification) => (
-                        <div 
-                          key={notification.id}
-                          className={`p-4 hover:bg-muted/50 cursor-pointer ${!notification.read ? 'bg-primary/5' : ''}`}
-                          onClick={() => markNotificationAsRead(notification.id)}
-                        >
-                          <div className="flex items-start gap-3">
-                            <div className={`w-2 h-2 mt-2 rounded-full ${
-                              notification.type === 'success' ? 'bg-green-400' :
-                              notification.type === 'warning' ? 'bg-yellow-400' :
-                              notification.type === 'error' ? 'bg-red-400' : 'bg-blue-400'
-                            }`} />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm">{notification.message}</p>
-                              <p className="text-xs text-muted-foreground mt-1">{notification.time}</p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </ScrollArea>
-              </PopoverContent>
-            </Popover>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="flex items-center gap-2" data-testid="user-menu-btn">
-                  <div className="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center">
-                    <User className="w-4 h-4 text-primary" />
-                  </div>
-                  <span className="font-medium">{user?.name}</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem>
-                  <User className="w-4 h-4 mr-2" />
-                  Profile
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate('/settings')}>
-                  <Settings className="w-4 h-4 mr-2" />
-                  Settings
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="text-red-400" data-testid="logout-btn">
-                  <LogOut className="w-4 h-4 mr-2" />
-                  Logout
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </header>
+        <TopBar title="Dashboard" />
 
         {/* Dashboard Content */}
         <main className="flex-1 p-6 overflow-auto">
@@ -647,7 +469,7 @@ const HomeDashboardPage = () => {
                             <Progress value={jobStatus?.overall_progress || 0} className="h-3" />
                           </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                             {agents.map((agent, index) => {
                               const status = getAgentStatus(agent.id);
                               const progress = getAgentProgress(agent.id);
@@ -659,7 +481,7 @@ const HomeDashboardPage = () => {
                                   initial={{ opacity: 0, scale: 0.9 }}
                                   animate={{ opacity: 1, scale: 1 }}
                                   transition={{ delay: index * 0.1 }}
-                                  className={`p-4 rounded-lg border transition-all ${
+                                  className={`p-3 rounded-lg border transition-all ${
                                     status === 'completed' 
                                       ? 'bg-green-500/10 border-green-500/30' 
                                       : isActive 
@@ -670,21 +492,20 @@ const HomeDashboardPage = () => {
                                 >
                                   <div className="flex items-center gap-2 mb-2">
                                     {status === 'completed' ? (
-                                      <CheckCircle2 className="w-5 h-5 text-green-400" />
+                                      <CheckCircle2 className="w-4 h-4 text-green-400" />
                                     ) : status === 'processing' ? (
-                                      <Loader2 className="w-5 h-5 text-primary animate-spin" />
+                                      <Loader2 className="w-4 h-4 text-primary animate-spin" />
                                     ) : (
-                                      <agent.icon className="w-5 h-5 text-muted-foreground" />
+                                      <agent.icon className="w-4 h-4 text-muted-foreground" />
                                     )}
-                                    <span className={`text-sm font-medium ${
+                                    <span className={`text-xs font-medium ${
                                       status === 'completed' ? 'text-green-400' : 
                                       isActive ? 'text-primary' : 'text-muted-foreground'
                                     }`}>
                                       {agent.name}
                                     </span>
                                   </div>
-                                  <p className="text-xs text-muted-foreground mb-2">{agent.description}</p>
-                                  <Progress value={progress} className="h-1.5" />
+                                  <Progress value={progress} className="h-1" />
                                   <p className="text-xs text-muted-foreground mt-1">{progress}%</p>
                                 </motion.div>
                               );
@@ -799,9 +620,11 @@ const HomeDashboardPage = () => {
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm">{activity.message}</p>
-                              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                                <Clock className="w-3 h-3" /> {activity.time}
-                              </p>
+                              {activity.time && (
+                                <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                                  <Clock className="w-3 h-3" /> {activity.time}
+                                </p>
+                              )}
                             </div>
                           </div>
                         ))}
