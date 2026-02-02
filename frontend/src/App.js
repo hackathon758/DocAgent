@@ -6,12 +6,14 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import LandingPage from "@/pages/LandingPage";
 import LoginPage from "@/pages/LoginPage";
 import RegisterPage from "@/pages/RegisterPage";
-import DashboardPage from "@/pages/DashboardPage";
+import HomeDashboardPage from "@/pages/HomeDashboardPage";
 import RepositoriesPage from "@/pages/RepositoriesPage";
 import DocumentationPage from "@/pages/DocumentationPage";
 import GeneratePage from "@/pages/GeneratePage";
 import SettingsPage from "@/pages/SettingsPage";
 import PricingPage from "@/pages/PricingPage";
+import AnalyticsPage from "@/pages/AnalyticsPage";
+import AdminPage from "@/pages/AdminPage";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
