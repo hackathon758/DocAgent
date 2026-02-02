@@ -1832,12 +1832,28 @@ def generate_docx_from_documentation(docs: List[Dict[str, Any]], repo_name: str)
             document.add_heading('Diagram', level=2)
             for diagram in doc.get('diagrams', []):
                 if isinstance(diagram, dict) and diagram.get('mermaid_code'):
-                    diagram_para = document.add_paragraph()
-                    diagram_para.add_run('Mermaid Diagram Code:').bold = True
-                    code_para = document.add_paragraph()
-                    code_run = code_para.add_run(diagram.get('mermaid_code', ''))
-                    code_run.font.name = 'Courier New'
-                    code_run.font.size = Pt(9)
+                    mermaid_code = diagram.get('mermaid_code', '')
+                    # Clean up the mermaid code - replace escaped newlines with actual newlines
+                    clean_code = mermaid_code.replace('\\n', '\n').replace('\\t', '  ').strip()
+                    
+                    # Render Mermaid to PNG using mmdc CLI
+                    diagram_image = render_mermaid_to_image(clean_code)
+                    
+                    if diagram_image:
+                        # Add the rendered diagram image to the document
+                        diagram_para = document.add_paragraph()
+                        diagram_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                        run = diagram_para.add_run()
+                        run.add_picture(diagram_image, width=Inches(5.5))
+                    else:
+                        # Fallback to code if rendering fails
+                        diagram_para = document.add_paragraph()
+                        diagram_para.add_run('Mermaid Diagram Code (rendering failed):').bold = True
+                        code_para = document.add_paragraph()
+                        code_run = code_para.add_run(clean_code)
+                        code_run.font.name = 'Courier New'
+                        code_run.font.size = Pt(9)
+                    
                     if diagram.get('description'):
                         desc_para = document.add_paragraph()
                         desc_para.add_run('Description: ').bold = True
