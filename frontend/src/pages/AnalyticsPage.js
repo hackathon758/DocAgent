@@ -1,0 +1,534 @@
+import { useState, useEffect } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import axios from 'axios';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+} from 'chart.js';
+import { Line, Doughnut, Bar } from 'react-chartjs-2';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
+import {
+  FileText,
+  FolderGit2,
+  Settings,
+  Home,
+  Zap,
+  TrendingUp,
+  BarChart3,
+  PieChart,
+  Calendar,
+  Filter,
+  Download,
+  RefreshCw,
+  User,
+  Bell,
+  LogOut,
+  Activity,
+  CheckCircle2,
+  Clock,
+  Target,
+  Users,
+  Cpu
+} from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+
+// Register Chart.js components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+);
+
+const API_URL = process.env.REACT_APP_BACKEND_URL;
+
+const AnalyticsPage = () => {
+  const { user, logout } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [analytics, setAnalytics] = useState(null);
+  const [coverage, setCoverage] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [dateRange, setDateRange] = useState('30d');
+  const [selectedRepo, setSelectedRepo] = useState('all');
+  const [repositories, setRepositories] = useState([]);
+
+  useEffect(() => {
+    fetchData();
+  }, [dateRange, selectedRepo]);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [analyticsRes, coverageRes, reposRes] = await Promise.all([
+        axios.get(`${API_URL}/api/analytics/overview`),
+        axios.get(`${API_URL}/api/analytics/coverage`),
+        axios.get(`${API_URL}/api/repositories`)
+      ]);
+      setAnalytics(analyticsRes.data);
+      setCoverage(coverageRes.data);
+      setRepositories(reposRes.data);
+    } catch (error) {
+      console.error('Failed to fetch analytics:', error);
+      toast.error('Failed to load analytics data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+    toast.success('Logged out successfully');
+  };
+
+  const navItems = [
+    { path: '/dashboard', icon: Home, label: 'Dashboard' },
+    { path: '/repositories', icon: FolderGit2, label: 'Repositories' },
+    { path: '/documentation', icon: FileText, label: 'Documentation' },
+    { path: '/analytics', icon: BarChart3, label: 'Analytics' },
+    { path: '/generate', icon: Zap, label: 'Generate' },
+    { path: '/settings', icon: Settings, label: 'Settings' },
+  ];
+
+  // Chart configurations with dark theme
+  const coverageTrendData = {
+    labels: coverage?.trend?.map(t => t.date) || ['Jan 1', 'Jan 8', 'Jan 15', 'Jan 22', 'Jan 29'],
+    datasets: [
+      {
+        label: 'Coverage %',
+        data: coverage?.trend?.map(t => t.coverage) || [50, 60, 65, 70, 75],
+        borderColor: 'rgb(124, 58, 237)',
+        backgroundColor: 'rgba(124, 58, 237, 0.1)',
+        fill: true,
+        tension: 0.4,
+      },
+    ],
+  };
+
+  const languageDistributionData = {
+    labels: Object.keys(coverage?.by_language || { Python: 45, JavaScript: 30, TypeScript: 25 }),
+    datasets: [
+      {
+        data: Object.values(coverage?.by_language || { Python: 45, JavaScript: 30, TypeScript: 25 }),
+        backgroundColor: [
+          'rgba(124, 58, 237, 0.8)',
+          'rgba(59, 130, 246, 0.8)',
+          'rgba(16, 185, 129, 0.8)',
+          'rgba(245, 158, 11, 0.8)',
+          'rgba(239, 68, 68, 0.8)',
+        ],
+        borderColor: [
+          'rgba(124, 58, 237, 1)',
+          'rgba(59, 130, 246, 1)',
+          'rgba(16, 185, 129, 1)',
+          'rgba(245, 158, 11, 1)',
+          'rgba(239, 68, 68, 1)',
+        ],
+        borderWidth: 1,
+      },
+    ],
+  };
+
+  const qualityDistributionData = {
+    labels: ['90-100%', '80-89%', '70-79%', '60-69%', '<60%'],
+    datasets: [
+      {
+        label: 'Components',
+        data: [35, 45, 25, 15, 5],
+        backgroundColor: [
+          'rgba(16, 185, 129, 0.8)',
+          'rgba(59, 130, 246, 0.8)',
+          'rgba(124, 58, 237, 0.8)',
+          'rgba(245, 158, 11, 0.8)',
+          'rgba(239, 68, 68, 0.8)',
+        ],
+      },
+    ],
+  };
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        labels: {
+          color: 'rgba(255, 255, 255, 0.7)',
+        },
+      },
+    },
+    scales: {
+      x: {
+        ticks: { color: 'rgba(255, 255, 255, 0.7)' },
+        grid: { color: 'rgba(255, 255, 255, 0.1)' },
+      },
+      y: {
+        ticks: { color: 'rgba(255, 255, 255, 0.7)' },
+        grid: { color: 'rgba(255, 255, 255, 0.1)' },
+      },
+    },
+  };
+
+  const doughnutOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'right',
+        labels: {
+          color: 'rgba(255, 255, 255, 0.7)',
+          padding: 15,
+        },
+      },
+    },
+  };
+
+  // Mock activity feed
+  const activityFeed = [
+    { id: 1, type: 'generate', message: 'Documentation generated for auth.py', time: '5 minutes ago', user: 'John D.' },
+    { id: 2, type: 'sync', message: 'Repository synced: my-project', time: '1 hour ago', user: 'System' },
+    { id: 3, type: 'generate', message: 'Documentation generated for utils/helpers.js', time: '2 hours ago', user: 'Jane S.' },
+    { id: 4, type: 'complete', message: 'Batch documentation completed for api/', time: '3 hours ago', user: 'System' },
+    { id: 5, type: 'generate', message: 'Documentation generated for models/user.py', time: '5 hours ago', user: 'John D.' },
+  ];
+
+  return (
+    <div className="min-h-screen bg-background flex">
+      {/* Sidebar */}
+      <aside className="w-64 border-r border-white/5 bg-card/50 flex flex-col">
+        <div className="p-6 border-b border-white/5">
+          <Link to="/" className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center">
+              <FileText className="w-5 h-5 text-white" />
+            </div>
+            <span className="font-heading font-bold text-xl">DocAgent</span>
+          </Link>
+        </div>
+
+        <nav className="flex-1 p-4">
+          <ul className="space-y-1">
+            {navItems.map((item) => {
+              const isActive = location.pathname === item.path;
+              return (
+                <li key={item.path}>
+                  <Link
+                    to={item.path}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                      isActive 
+                        ? 'bg-primary/10 text-primary' 
+                        : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
+                    }`}
+                  >
+                    <item.icon className="w-5 h-5" />
+                    <span className="font-medium">{item.label}</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+
+        <div className="p-4 border-t border-white/5">
+          <div className="bg-muted/50 rounded-lg p-4">
+            <p className="text-sm font-medium text-foreground mb-1">Current Plan</p>
+            <p className="text-xs text-muted-foreground capitalize">{user?.subscription_tier || 'Free'} Tier</p>
+            <Link to="/pricing">
+              <Button variant="outline" size="sm" className="w-full mt-3 border-white/10">
+                Upgrade
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col">
+        {/* Top Bar */}
+        <header className="h-16 border-b border-white/5 bg-card/50 flex items-center justify-between px-6">
+          <div className="flex items-center gap-4">
+            <h1 className="text-xl font-semibold">Analytics Dashboard</h1>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" className="relative">
+              <Bell className="w-5 h-5" />
+            </Button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="flex items-center gap-2">
+                  <div className="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center">
+                    <User className="w-4 h-4 text-primary" />
+                  </div>
+                  <span className="font-medium">{user?.name}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={() => navigate('/settings')}>
+                  <Settings className="w-4 h-4 mr-2" />
+                  Settings
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout} className="text-red-400">
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Log out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </header>
+
+        {/* Page Content */}
+        <main className="flex-1 p-6 overflow-auto">
+          <div className="max-w-7xl mx-auto space-y-6">
+            {/* Filters */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Select value={dateRange} onValueChange={setDateRange}>
+                  <SelectTrigger className="w-40 bg-muted/50 border-white/10">
+                    <Calendar className="w-4 h-4 mr-2" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="7d">Last 7 days</SelectItem>
+                    <SelectItem value="30d">Last 30 days</SelectItem>
+                    <SelectItem value="90d">Last 90 days</SelectItem>
+                    <SelectItem value="1y">Last year</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={selectedRepo} onValueChange={setSelectedRepo}>
+                  <SelectTrigger className="w-48 bg-muted/50 border-white/10">
+                    <Filter className="w-4 h-4 mr-2" />
+                    <SelectValue placeholder="All Repositories" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Repositories</SelectItem>
+                    {repositories.map(repo => (
+                      <SelectItem key={repo.id} value={repo.id}>{repo.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={fetchData} className="gap-2 border-white/10">
+                  <RefreshCw className="w-4 h-4" />
+                  Refresh
+                </Button>
+                <Button variant="outline" size="sm" className="gap-2 border-white/10">
+                  <Download className="w-4 h-4" />
+                  Export
+                </Button>
+              </div>
+            </div>
+
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}>
+                <Card className="bg-card border-white/5">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Total Repositories</p>
+                        <p className="text-3xl font-bold mt-1">{analytics?.total_repositories || 0}</p>
+                        <p className="text-xs text-green-400 mt-1 flex items-center gap-1">
+                          <TrendingUp className="w-3 h-3" /> +2 this month
+                        </p>
+                      </div>
+                      <div className="w-12 h-12 bg-primary/20 rounded-lg flex items-center justify-center">
+                        <FolderGit2 className="w-6 h-6 text-primary" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+                <Card className="bg-card border-white/5">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Components Documented</p>
+                        <p className="text-3xl font-bold mt-1">{analytics?.total_documentation || 0}</p>
+                        <p className="text-xs text-green-400 mt-1 flex items-center gap-1">
+                          <TrendingUp className="w-3 h-3" /> +{analytics?.components_documented_this_month || 0} this month
+                        </p>
+                      </div>
+                      <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                        <FileText className="w-6 h-6 text-blue-400" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+                <Card className="bg-card border-white/5">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Avg Quality Score</p>
+                        <p className="text-3xl font-bold mt-1">{analytics?.average_quality_score || 0}%</p>
+                        <p className="text-xs text-green-400 mt-1 flex items-center gap-1">
+                          <TrendingUp className="w-3 h-3" /> +5% from last month
+                        </p>
+                      </div>
+                      <div className="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center">
+                        <Target className="w-6 h-6 text-green-400" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+                <Card className="bg-card border-white/5">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Coverage</p>
+                        <p className="text-3xl font-bold mt-1">{analytics?.coverage_percentage || 0}%</p>
+                        <p className="text-xs text-green-400 mt-1 flex items-center gap-1">
+                          <TrendingUp className="w-3 h-3" /> +10% from last month
+                        </p>
+                      </div>
+                      <div className="w-12 h-12 bg-yellow-500/20 rounded-lg flex items-center justify-center">
+                        <Activity className="w-6 h-6 text-yellow-400" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </div>
+
+            {/* Charts Row */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Coverage Trend */}
+              <Card className="bg-card border-white/5">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-primary" />
+                    Coverage Trend
+                  </CardTitle>
+                  <CardDescription>Documentation coverage over time</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-64">
+                    <Line data={coverageTrendData} options={chartOptions} />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Language Distribution */}
+              <Card className="bg-card border-white/5">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <PieChart className="w-5 h-5 text-primary" />
+                    Language Distribution
+                  </CardTitle>
+                  <CardDescription>Coverage by programming language</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-64">
+                    <Doughnut data={languageDistributionData} options={doughnutOptions} />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Second Charts Row */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Quality Distribution */}
+              <Card className="bg-card border-white/5 lg:col-span-2">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <BarChart3 className="w-5 h-5 text-primary" />
+                    Quality Score Distribution
+                  </CardTitle>
+                  <CardDescription>Distribution of documentation quality scores</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-64">
+                    <Bar data={qualityDistributionData} options={chartOptions} />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Activity Feed */}
+              <Card className="bg-card border-white/5">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Activity className="w-5 h-5 text-primary" />
+                    Recent Activity
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4 max-h-64 overflow-auto">
+                    {activityFeed.map((activity) => (
+                      <div key={activity.id} className="flex items-start gap-3">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                          activity.type === 'complete' ? 'bg-green-500/20' :
+                          activity.type === 'sync' ? 'bg-blue-500/20' : 'bg-primary/20'
+                        }`}>
+                          {activity.type === 'complete' ? (
+                            <CheckCircle2 className="w-4 h-4 text-green-400" />
+                          ) : activity.type === 'sync' ? (
+                            <RefreshCw className="w-4 h-4 text-blue-400" />
+                          ) : (
+                            <FileText className="w-4 h-4 text-primary" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm truncate">{activity.message}</p>
+                          <p className="text-xs text-muted-foreground flex items-center gap-2">
+                            <Clock className="w-3 h-3" /> {activity.time}
+                            <span>•</span> {activity.user}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+};
+
+export default AnalyticsPage;
