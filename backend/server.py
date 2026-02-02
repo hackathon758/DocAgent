@@ -1759,6 +1759,46 @@ async def fetch_github_repo_contents(repo_url: str, branch: str = "main", access
     await fetch_tree()
     return files
 
+def render_mermaid_to_image(mermaid_code: str) -> Optional[io.BytesIO]:
+    """Render Mermaid code to PNG image using mmdc CLI"""
+    try:
+        # Create temporary files for input and output
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.mmd', delete=False) as mmd_file:
+            mmd_file.write(mermaid_code)
+            mmd_path = mmd_file.name
+        
+        png_path = mmd_path.replace('.mmd', '.png')
+        
+        # Run mmdc to convert Mermaid to PNG
+        result = subprocess.run(
+            ['mmdc', '-i', mmd_path, '-o', png_path, '-b', 'white', '-w', '800', '-H', '600'],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+        
+        # Read the generated PNG
+        if os.path.exists(png_path):
+            with open(png_path, 'rb') as f:
+                image_data = f.read()
+            
+            # Clean up temp files
+            os.unlink(mmd_path)
+            os.unlink(png_path)
+            
+            return io.BytesIO(image_data)
+        else:
+            logger.warning(f"Mermaid rendering failed: {result.stderr}")
+            os.unlink(mmd_path)
+            return None
+            
+    except subprocess.TimeoutExpired:
+        logger.error("Mermaid rendering timed out")
+        return None
+    except Exception as e:
+        logger.error(f"Error rendering Mermaid diagram: {e}")
+        return None
+
 def generate_docx_from_documentation(docs: List[Dict[str, Any]], repo_name: str) -> io.BytesIO:
     """Generate a DOCX file from documentation data"""
     document = Document()
