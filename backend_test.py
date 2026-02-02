@@ -923,6 +923,10 @@ class BackendTester:
         await self.test_me_without_token()
         await self.test_me_with_invalid_token()
         
+        # MAIN TEST: DOCX Export with Rendered Mermaid Diagrams (from review request)
+        print("\n🎨 Testing DOCX Export with Rendered Mermaid Diagrams...")
+        await self.test_mermaid_diagram_docx_export()
+        
         # Test repository documentation endpoints (requires authentication)
         print("\n📚 Testing Repository Documentation Endpoints...")
         await self.test_repo_documentation_with_model_verification()  # NEW - focuses on model verification
