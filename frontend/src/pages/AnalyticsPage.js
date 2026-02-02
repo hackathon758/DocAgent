@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import axios from 'axios';
 import {
@@ -20,12 +20,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import Sidebar from '@/components/Sidebar';
+import TopBar from '@/components/TopBar';
 import {
   FileText,
   FolderGit2,
-  Settings,
-  Home,
-  Zap,
   TrendingUp,
   BarChart3,
   PieChart,
@@ -33,15 +32,10 @@ import {
   Filter,
   Download,
   RefreshCw,
-  User,
-  Bell,
-  LogOut,
   Activity,
   CheckCircle2,
   Clock,
-  Target,
-  Users,
-  Cpu
+  Target
 } from 'lucide-react';
 import {
   Select,
@@ -50,13 +44,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 
 // Register Chart.js components
 ChartJS.register(
@@ -75,8 +62,7 @@ ChartJS.register(
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 const AnalyticsPage = () => {
-  const { user, logout } = useAuth();
-  const location = useLocation();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [analytics, setAnalytics] = useState(null);
   const [coverage, setCoverage] = useState(null);
@@ -107,21 +93,6 @@ const AnalyticsPage = () => {
       setLoading(false);
     }
   };
-
-  const handleLogout = () => {
-    logout();
-    navigate('/');
-    toast.success('Logged out successfully');
-  };
-
-  const navItems = [
-    { path: '/dashboard', icon: Home, label: 'Dashboard' },
-    { path: '/repositories', icon: FolderGit2, label: 'Repositories' },
-    { path: '/documentation', icon: FileText, label: 'Documentation' },
-    { path: '/analytics', icon: BarChart3, label: 'Analytics' },
-    { path: '/generate', icon: Zap, label: 'Generate' },
-    { path: '/settings', icon: Settings, label: 'Settings' },
-  ];
 
   // Chart configurations with dark theme
   const coverageTrendData = {
@@ -215,7 +186,7 @@ const AnalyticsPage = () => {
     },
   };
 
-  // Mock activity feed
+  // Activity feed
   const activityFeed = [
     { id: 1, type: 'generate', message: 'Documentation generated for auth.py', time: '5 minutes ago', user: 'John D.' },
     { id: 2, type: 'sync', message: 'Repository synced: my-project', time: '1 hour ago', user: 'System' },
@@ -226,91 +197,11 @@ const AnalyticsPage = () => {
 
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Sidebar */}
-      <aside className="w-64 border-r border-white/5 bg-card/50 flex flex-col">
-        <div className="p-6 border-b border-white/5">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center">
-              <FileText className="w-5 h-5 text-white" />
-            </div>
-            <span className="font-heading font-bold text-xl">DocAgent</span>
-          </Link>
-        </div>
+      <Sidebar />
 
-        <nav className="flex-1 p-4">
-          <ul className="space-y-1">
-            {navItems.map((item) => {
-              const isActive = location.pathname === item.path;
-              return (
-                <li key={item.path}>
-                  <Link
-                    to={item.path}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                      isActive 
-                        ? 'bg-primary/10 text-primary' 
-                        : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
-                    }`}
-                  >
-                    <item.icon className="w-5 h-5" />
-                    <span className="font-medium">{item.label}</span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
-
-        <div className="p-4 border-t border-white/5">
-          <div className="bg-muted/50 rounded-lg p-4">
-            <p className="text-sm font-medium text-foreground mb-1">Current Plan</p>
-            <p className="text-xs text-muted-foreground capitalize">{user?.subscription_tier || 'Free'} Tier</p>
-            <Link to="/pricing">
-              <Button variant="outline" size="sm" className="w-full mt-3 border-white/10">
-                Upgrade
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </aside>
-
-      {/* Main Content */}
       <div className="flex-1 flex flex-col">
-        {/* Top Bar */}
-        <header className="h-16 border-b border-white/5 bg-card/50 flex items-center justify-between px-6">
-          <div className="flex items-center gap-4">
-            <h1 className="text-xl font-semibold">Analytics Dashboard</h1>
-          </div>
+        <TopBar title="Analytics Dashboard" />
 
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="w-5 h-5" />
-            </Button>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center">
-                    <User className="w-4 h-4 text-primary" />
-                  </div>
-                  <span className="font-medium">{user?.name}</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem onClick={() => navigate('/settings')}>
-                  <Settings className="w-4 h-4 mr-2" />
-                  Settings
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="text-red-400">
-                  <LogOut className="w-4 h-4 mr-2" />
-                  Log out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </header>
-
-        {/* Page Content */}
         <main className="flex-1 p-6 overflow-auto">
           <div className="max-w-7xl mx-auto space-y-6">
             {/* Filters */}
