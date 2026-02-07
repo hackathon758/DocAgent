@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 
 // Pages
 import LandingPage from "@/pages/LandingPage";
@@ -152,12 +153,14 @@ function AppRoutes() {
 function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <div className="min-h-screen bg-background dark">
-          <AppRoutes />
-          <Toaster position="top-right" richColors />
-        </div>
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <div className="min-h-screen bg-background">
+            <AppRoutes />
+            <Toaster position="top-right" richColors />
+          </div>
+        </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }
