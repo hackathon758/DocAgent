@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import ThemeToggle from './ThemeToggle';
 import {
   Settings,
   LogOut,
@@ -12,8 +13,10 @@ import {
   X,
   CheckCircle2,
   AlertCircle,
-  Info
+  Info,
+  Search
 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -71,12 +74,24 @@ const TopBar = ({ title }) => {
   };
 
   return (
-    <header className="h-16 border-b border-white/5 bg-card/50 flex items-center justify-between px-6">
+    <header className="h-16 border-b border-border bg-card/50 backdrop-blur-sm flex items-center justify-between px-6">
       <div className="flex items-center gap-4">
-        <h2 className="text-lg font-medium text-foreground">{title}</h2>
+        <h2 className="text-xl font-semibold text-foreground">{title}</h2>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
+        {/* Search */}
+        <div className="relative hidden md:block">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input 
+            placeholder="Search..." 
+            className="w-64 pl-9 h-9 bg-muted/50 border-border focus:bg-background"
+          />
+        </div>
+
+        {/* Theme Toggle */}
+        <ThemeToggle />
+
         {/* Notifications */}
         <Popover open={showNotifications} onOpenChange={setShowNotifications}>
           <PopoverTrigger asChild>
