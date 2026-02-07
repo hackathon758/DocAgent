@@ -12,7 +12,7 @@ import os
 from datetime import datetime
 
 # Get backend URL from frontend .env file
-BACKEND_URL = "https://repo-oauth-wizard.preview.emergentagent.com/api"
+BACKEND_URL = "https://fullstack-makeover.preview.emergentagent.com/api"
 
 class MermaidDiagramTester:
     def __init__(self):
