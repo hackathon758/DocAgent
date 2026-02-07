@@ -12,49 +12,37 @@ import { toast } from 'sonner';
 import Sidebar from '@/components/Sidebar';
 import TopBar from '@/components/TopBar';
 import {
-  FileText,
-  FolderGit2,
-  CheckCircle2,
-  AlertCircle,
-  Loader2,
-  Zap,
-  Github,
-  Play,
-  Download,
-  Code,
-  GitBranch,
-  Bot,
-  FileSearch,
-  Plus,
-  TrendingUp,
-  Activity,
-  Clock,
-  ArrowRight,
-  BarChart3,
-  Target,
-  Shield,
-  Cpu,
-  RefreshCw,
-  ExternalLink,
-  Star
+  AreaChart, Area, LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
+} from 'recharts';
+import {
+  FileText, FolderGit2, CheckCircle2, AlertCircle, Loader2, Zap, Github,
+  Play, Download, Code, GitBranch, Bot, FileSearch, Plus, TrendingUp,
+  Activity, Clock, ArrowRight, BarChart3, Target, Shield, RefreshCw, Star
 } from 'lucide-react';
 import DocumentPreviewModal from '@/components/DocumentPreviewModal';
 import { Input } from '@/components/ui/input';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
+// Chart colors
+const COLORS = {
+  primary: 'hsl(217, 91%, 60%)',
+  accent: 'hsl(263, 70%, 66%)',
+  success: 'hsl(142, 76%, 42%)',
+  warning: 'hsl(38, 92%, 50%)',
+  destructive: 'hsl(0, 84%, 60%)'
+};
+
 const HomeDashboardPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   
-  // Dashboard state
   const [analytics, setAnalytics] = useState(null);
   const [repositories, setRepositories] = useState([]);
-  const [recentDocs, setRecentDocs] = useState([]);
   const [recentJobs, setRecentJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // Repository documentation state
   const [repoUrl, setRepoUrl] = useState('');
   const [branch, setBranch] = useState('main');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -63,34 +51,45 @@ const HomeDashboardPage = () => {
   const [documentation, setDocumentation] = useState(null);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const pollIntervalRef = useRef(null);
-
-  // Activity feed from jobs
   const [activityFeed, setActivityFeed] = useState([]);
+
+  // Sample chart data
+  const [coverageData, setCoverageData] = useState([
+    { name: 'Mon', coverage: 65, docs: 12 },
+    { name: 'Tue', coverage: 72, docs: 18 },
+    { name: 'Wed', coverage: 68, docs: 15 },
+    { name: 'Thu', coverage: 78, docs: 22 },
+    { name: 'Fri', coverage: 82, docs: 28 },
+    { name: 'Sat', coverage: 85, docs: 32 },
+    { name: 'Sun', coverage: 88, docs: 35 },
+  ]);
+
+  const [languageData, setLanguageData] = useState([
+    { name: 'Python', value: 45, color: COLORS.primary },
+    { name: 'JavaScript', value: 30, color: COLORS.warning },
+    { name: 'TypeScript', value: 15, color: COLORS.accent },
+    { name: 'Other', value: 10, color: COLORS.success },
+  ]);
 
   useEffect(() => {
     fetchDashboardData();
     return () => {
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-      }
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
     };
   }, []);
 
   const fetchDashboardData = async () => {
     try {
-      const [analyticsRes, reposRes, docsRes, jobsRes] = await Promise.all([
+      const [analyticsRes, reposRes, jobsRes] = await Promise.all([
         axios.get(`${API_URL}/api/analytics/overview`),
         axios.get(`${API_URL}/api/repositories`),
-        axios.get(`${API_URL}/api/documentation`),
         axios.get(`${API_URL}/api/jobs`)
       ]);
       setAnalytics(analyticsRes.data);
       setRepositories(reposRes.data.slice(0, 5));
-      setRecentDocs(docsRes.data.slice(0, 5));
       setRecentJobs(jobsRes.data.slice(0, 5));
       
-      // Build activity feed from jobs
-      const activities = jobsRes.data.slice(0, 10).map((job, idx) => ({
+      const activities = jobsRes.data.slice(0, 8).map((job, idx) => ({
         id: job.id || idx,
         type: job.status === 'completed' ? 'complete' : job.status === 'failed' ? 'error' : 'generate',
         message: job.status === 'completed' 
@@ -100,7 +99,7 @@ const HomeDashboardPage = () => {
           : `Processing ${job.repo_name || 'repository'}`,
         time: job.created_at ? new Date(job.created_at).toLocaleString() : 'Recently',
         icon: job.status === 'completed' ? CheckCircle2 : job.status === 'failed' ? AlertCircle : FileText,
-        color: job.status === 'completed' ? 'text-green-400' : job.status === 'failed' ? 'text-red-400' : 'text-blue-400'
+        color: job.status === 'completed' ? 'text-green-500' : job.status === 'failed' ? 'text-red-500' : 'text-primary'
       }));
       setActivityFeed(activities.length > 0 ? activities : [
         { id: 1, type: 'info', message: 'Welcome to DocAgent!', time: 'Just now', icon: Star, color: 'text-primary' },
@@ -148,7 +147,6 @@ const HomeDashboardPage = () => {
             clearInterval(pollIntervalRef.current);
             setIsGenerating(false);
             toast.success('Documentation generated successfully!');
-            
             const previewResponse = await axios.get(`${API_URL}/api/repo-documentation/preview/${jobId}`);
             setDocumentation(previewResponse.data.documentation);
             fetchDashboardData();
@@ -171,12 +169,10 @@ const HomeDashboardPage = () => {
 
   const handleExportDocx = async () => {
     if (!currentJobId) return;
-
     try {
       const response = await axios.get(`${API_URL}/api/repo-documentation/export/${currentJobId}`, {
         responseType: 'blob'
       });
-
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -185,7 +181,6 @@ const HomeDashboardPage = () => {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-
       toast.success('Documentation exported successfully!');
     } catch (error) {
       console.error('Export error:', error);
@@ -211,156 +206,200 @@ const HomeDashboardPage = () => {
     return jobStatus.agents[agentId]?.progress || 0;
   };
 
-  const quickActions = [
-    { icon: Plus, label: 'Connect Repository', path: '/repositories', color: 'bg-blue-500/20 text-blue-400' },
-    { icon: Zap, label: 'Generate Docs', path: '/generate', color: 'bg-green-500/20 text-green-400' },
-    { icon: BarChart3, label: 'View Analytics', path: '/analytics', color: 'bg-purple-500/20 text-purple-400' },
-    { icon: Shield, label: 'Admin Panel', path: '/admin', color: 'bg-yellow-500/20 text-yellow-400' },
-  ];
+  const StatCard = ({ title, value, subtitle, icon: Icon, trend, color }) => (
+    <Card className="stat-card bg-card border-border hover:border-primary/50 transition-all">
+      <CardContent className="p-6">
+        <div className="flex items-start justify-between">
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-muted-foreground">{title}</p>
+            <p className="text-3xl font-bold tracking-tight">{value}</p>
+            {subtitle && (
+              <p className={`text-xs flex items-center gap-1 ${trend === 'up' ? 'text-green-500' : 'text-muted-foreground'}`}>
+                {trend === 'up' && <TrendingUp className="w-3 h-3" />}
+                {subtitle}
+              </p>
+            )}
+          </div>
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${color}`}>
+            <Icon className="w-6 h-6" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-popover border border-border rounded-lg p-3 shadow-lg">
+          <p className="text-sm font-medium">{label}</p>
+          {payload.map((entry, index) => (
+            <p key={index} className="text-xs text-muted-foreground">
+              {entry.name}: <span className="font-medium text-foreground">{entry.value}</span>
+            </p>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
     <div className="min-h-screen bg-background flex">
       <Sidebar />
-
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col overflow-hidden">
         <TopBar title="Dashboard" />
-
-        {/* Dashboard Content */}
+        
         <main className="flex-1 p-6 overflow-auto">
-          <div className="max-w-7xl mx-auto">
-            {/* Welcome Header */}
-            <div className="mb-8">
-              <h1 className="font-heading text-3xl font-bold text-foreground mb-2">
-                Welcome back, {user?.name?.split(' ')[0]}!
-              </h1>
-              <p className="text-muted-foreground">
-                Here's an overview of your documentation status
-              </p>
-            </div>
-
-            {/* Stats Overview Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}>
-                <Card className="bg-card border-white/5 hover:border-primary/30 transition-colors">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Total Repositories</p>
-                        <p className="text-3xl font-bold mt-1">{analytics?.total_repositories || 0}</p>
-                        <p className="text-xs text-green-400 mt-1 flex items-center gap-1">
-                          <TrendingUp className="w-3 h-3" /> Active
-                        </p>
-                      </div>
-                      <div className="w-12 h-12 bg-primary/20 rounded-lg flex items-center justify-center">
-                        <FolderGit2 className="w-6 h-6 text-primary" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-                <Card className="bg-card border-white/5 hover:border-blue-500/30 transition-colors">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Components Documented</p>
-                        <p className="text-3xl font-bold mt-1">{analytics?.total_documentation || 0}</p>
-                        <p className="text-xs text-green-400 mt-1 flex items-center gap-1">
-                          <TrendingUp className="w-3 h-3" /> +{analytics?.components_documented_this_month || 0} this month
-                        </p>
-                      </div>
-                      <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
-                        <FileText className="w-6 h-6 text-blue-400" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-                <Card className="bg-card border-white/5 hover:border-green-500/30 transition-colors">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Avg Quality Score</p>
-                        <p className="text-3xl font-bold mt-1">{analytics?.average_quality_score || 0}%</p>
-                        <p className="text-xs text-green-400 mt-1 flex items-center gap-1">
-                          <Star className="w-3 h-3" /> Excellent
-                        </p>
-                      </div>
-                      <div className="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center">
-                        <Target className="w-6 h-6 text-green-400" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-                <Card className="bg-card border-white/5 hover:border-yellow-500/30 transition-colors">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Coverage</p>
-                        <p className="text-3xl font-bold mt-1">{analytics?.coverage_percentage || 0}%</p>
-                        <Progress value={analytics?.coverage_percentage || 0} className="h-1.5 mt-2 w-24" />
-                      </div>
-                      <div className="w-12 h-12 bg-yellow-500/20 rounded-lg flex items-center justify-center">
-                        <Activity className="w-6 h-6 text-yellow-400" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            </div>
-
-            {/* Quick Actions */}
-            <div className="mb-8">
-              <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {quickActions.map((action, index) => (
-                  <motion.div
-                    key={action.label}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 * index }}
-                  >
-                    <Link to={action.path}>
-                      <Card className="bg-card border-white/5 hover:border-white/20 transition-all cursor-pointer group">
-                        <CardContent className="p-4 flex items-center gap-4">
-                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${action.color}`}>
-                            <action.icon className="w-5 h-5" />
-                          </div>
-                          <span className="font-medium group-hover:text-primary transition-colors">{action.label}</span>
-                          <ArrowRight className="w-4 h-4 ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground" />
-                        </CardContent>
-                      </Card>
-                    </Link>
-                  </motion.div>
-                ))}
+          <div className="max-w-7xl mx-auto space-y-6">
+            {/* Welcome */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight">
+                  Welcome back, {user?.name?.split(' ')[0]}!
+                </h1>
+                <p className="text-muted-foreground text-sm mt-1">
+                  Here's an overview of your documentation status
+                </p>
               </div>
+              <Button variant="outline" size="sm" onClick={fetchDashboardData} className="gap-2">
+                <RefreshCw className="w-4 h-4" />
+                Refresh
+              </Button>
             </div>
 
-            {/* Main Content Grid */}
+            {/* Stats Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}>
+                <StatCard
+                  title="Total Repositories"
+                  value={analytics?.total_repositories || 0}
+                  subtitle="Active"
+                  trend="up"
+                  icon={FolderGit2}
+                  color="bg-primary/10 text-primary"
+                />
+              </motion.div>
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+                <StatCard
+                  title="Components Documented"
+                  value={analytics?.total_documentation || 0}
+                  subtitle={`+${analytics?.components_documented_this_month || 0} this month`}
+                  trend="up"
+                  icon={FileText}
+                  color="bg-blue-500/10 text-blue-500"
+                />
+              </motion.div>
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+                <StatCard
+                  title="Avg Quality Score"
+                  value={`${analytics?.average_quality_score || 0}%`}
+                  subtitle="Excellent"
+                  icon={Target}
+                  color="bg-green-500/10 text-green-500"
+                />
+              </motion.div>
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+                <StatCard
+                  title="Coverage"
+                  value={`${analytics?.coverage_percentage || 0}%`}
+                  subtitle="Overall coverage"
+                  icon={Activity}
+                  color="bg-amber-500/10 text-amber-500"
+                />
+              </motion.div>
+            </div>
+
+            {/* Charts Row */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Left Column - Generate Documentation */}
+              {/* Coverage Trend */}
+              <Card className="lg:col-span-2 bg-card border-border">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-semibold">Documentation Coverage Trend</CardTitle>
+                  <CardDescription>Weekly documentation activity</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[250px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={coverageData}>
+                        <defs>
+                          <linearGradient id="colorCoverage" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor={COLORS.primary} stopOpacity={0.3}/>
+                            <stop offset="95%" stopColor={COLORS.primary} stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                        <Tooltip content={<CustomTooltip />} />
+                        <Area
+                          type="monotone"
+                          dataKey="coverage"
+                          stroke={COLORS.primary}
+                          strokeWidth={2}
+                          fillOpacity={1}
+                          fill="url(#colorCoverage)"
+                          name="Coverage %"
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Language Distribution */}
+              <Card className="bg-card border-border">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-semibold">Language Distribution</CardTitle>
+                  <CardDescription>By repository count</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[250px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={languageData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={80}
+                          paddingAngle={5}
+                          dataKey="value"
+                        >
+                          {languageData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip content={<CustomTooltip />} />
+                        <Legend 
+                          verticalAlign="bottom" 
+                          height={36}
+                          formatter={(value) => <span className="text-xs text-foreground">{value}</span>}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Main Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Generate Documentation */}
               <div className="lg:col-span-2 space-y-6">
-                {/* GitHub Repository Input Section */}
-                <Card className="bg-gradient-to-r from-card to-card/50 border-white/10" data-testid="repo-input-card">
+                <Card className="bg-card border-border" data-testid="repo-input-card">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Github className="w-6 h-6 text-primary" />
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <Github className="w-5 h-5" />
                       Generate Repository Documentation
                     </CardTitle>
                     <CardDescription>
-                      Enter a GitHub repository URL to automatically generate comprehensive documentation
+                      Enter a GitHub repository URL to generate comprehensive documentation
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="flex gap-4">
+                    <div className="flex gap-3">
                       <div className="flex-1">
-                        <label className="text-sm text-muted-foreground mb-2 block">Repository URL</label>
                         <div className="relative">
                           <Github className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                           <Input
@@ -368,42 +407,38 @@ const HomeDashboardPage = () => {
                             placeholder="https://github.com/owner/repository"
                             value={repoUrl}
                             onChange={(e) => setRepoUrl(e.target.value)}
-                            className="pl-10 bg-muted/50 border-white/10 focus:border-primary"
+                            className="pl-10"
                             disabled={isGenerating}
                             data-testid="repo-url-input"
                           />
                         </div>
                       </div>
-                      <div className="w-32">
-                        <label className="text-sm text-muted-foreground mb-2 block">Branch</label>
-                        <Input
-                          type="text"
-                          placeholder="main"
-                          value={branch}
-                          onChange={(e) => setBranch(e.target.value)}
-                          className="bg-muted/50 border-white/10 focus:border-primary"
-                          disabled={isGenerating}
-                          data-testid="branch-input"
-                        />
-                      </div>
+                      <Input
+                        type="text"
+                        placeholder="main"
+                        value={branch}
+                        onChange={(e) => setBranch(e.target.value)}
+                        className="w-24"
+                        disabled={isGenerating}
+                        data-testid="branch-input"
+                      />
                     </div>
                     
-                    <div className="flex gap-3">
+                    <div className="flex gap-2">
                       <Button 
                         onClick={handleStartGeneration}
                         disabled={isGenerating || !repoUrl.trim()}
                         className="flex-1"
-                        size="lg"
                         data-testid="start-btn"
                       >
                         {isGenerating ? (
                           <>
-                            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                            Generating Documentation...
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Generating...
                           </>
                         ) : (
                           <>
-                            <Play className="w-5 h-5 mr-2" />
+                            <Play className="w-4 h-4 mr-2" />
                             Start Documentation
                           </>
                         )}
@@ -414,22 +449,19 @@ const HomeDashboardPage = () => {
                           <Button 
                             onClick={() => setShowPreviewModal(true)}
                             variant="outline"
-                            size="lg"
-                            className="border-primary/50 text-primary hover:bg-primary/10"
                             data-testid="preview-btn"
                           >
-                            <FileSearch className="w-5 h-5 mr-2" />
+                            <FileSearch className="w-4 h-4 mr-2" />
                             Preview
                           </Button>
                           <Button 
                             onClick={handleExportDocx}
                             variant="outline"
-                            size="lg"
-                            className="border-green-500/50 text-green-400 hover:bg-green-500/10"
+                            className="text-green-500 border-green-500/50 hover:bg-green-500/10"
                             data-testid="export-btn"
                           >
-                            <Download className="w-5 h-5 mr-2" />
-                            Export DOCX
+                            <Download className="w-4 h-4 mr-2" />
+                            Export
                           </Button>
                         </>
                       )}
@@ -437,7 +469,7 @@ const HomeDashboardPage = () => {
                   </CardContent>
                 </Card>
 
-                {/* Agent Progress Section */}
+                {/* Agent Progress */}
                 <AnimatePresence>
                   {(isGenerating || jobStatus) && (
                     <motion.div
@@ -445,277 +477,136 @@ const HomeDashboardPage = () => {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -20 }}
                     >
-                      <Card className="bg-card border-white/5" data-testid="agent-progress-card">
-                        <CardHeader>
-                          <CardTitle className="flex items-center gap-2">
+                      <Card className="bg-card border-border" data-testid="agent-progress-card">
+                        <CardHeader className="pb-3">
+                          <CardTitle className="flex items-center gap-2 text-base">
                             <Bot className="w-5 h-5 text-primary" />
-                            Agent Progress
-                            {jobStatus?.repo_name && (
-                              <span className="text-sm font-normal text-muted-foreground ml-2">
-                                - {jobStatus.repo_name}
-                              </span>
-                            )}
+                            AI Agent Progress
                           </CardTitle>
-                          <CardDescription>
-                            {jobStatus?.files_processed || 0} of {jobStatus?.total_files || 0} files processed
-                          </CardDescription>
+                          {jobStatus && (
+                            <div className="flex items-center gap-2 mt-2">
+                              <Progress value={jobStatus.progress || 0} className="flex-1 h-2" />
+                              <span className="text-sm font-medium">{jobStatus.progress || 0}%</span>
+                            </div>
+                          )}
                         </CardHeader>
                         <CardContent>
-                          <div className="mb-6">
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-sm font-medium">Overall Progress</span>
-                              <span className="text-sm text-muted-foreground">{jobStatus?.overall_progress || 0}%</span>
-                            </div>
-                            <Progress value={jobStatus?.overall_progress || 0} className="h-3" />
-                          </div>
-
-                          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                          <div className="grid grid-cols-5 gap-3">
                             {agents.map((agent, index) => {
                               const status = getAgentStatus(agent.id);
                               const progress = getAgentProgress(agent.id);
-                              const isActive = jobStatus?.current_agent === agent.id;
-                              
                               return (
                                 <motion.div
                                   key={agent.id}
                                   initial={{ opacity: 0, scale: 0.9 }}
                                   animate={{ opacity: 1, scale: 1 }}
                                   transition={{ delay: index * 0.1 }}
-                                  className={`p-3 rounded-lg border transition-all ${
-                                    status === 'completed' 
-                                      ? 'bg-green-500/10 border-green-500/30' 
-                                      : isActive 
-                                        ? 'bg-primary/10 border-primary/50 ring-2 ring-primary/20' 
-                                        : 'bg-muted/30 border-white/5'
+                                  className={`p-3 rounded-lg border text-center transition-all ${
+                                    status === 'completed' ? 'bg-green-500/10 border-green-500/30' :
+                                    status === 'running' ? 'bg-primary/10 border-primary/30' :
+                                    'bg-muted/50 border-border'
                                   }`}
-                                  data-testid={`agent-${agent.id}`}
                                 >
-                                  <div className="flex items-center gap-2 mb-2">
-                                    {status === 'completed' ? (
-                                      <CheckCircle2 className="w-4 h-4 text-green-400" />
-                                    ) : status === 'processing' ? (
-                                      <Loader2 className="w-4 h-4 text-primary animate-spin" />
-                                    ) : (
-                                      <agent.icon className="w-4 h-4 text-muted-foreground" />
-                                    )}
-                                    <span className={`text-xs font-medium ${
-                                      status === 'completed' ? 'text-green-400' : 
-                                      isActive ? 'text-primary' : 'text-muted-foreground'
-                                    }`}>
-                                      {agent.name}
-                                    </span>
-                                  </div>
-                                  <Progress value={progress} className="h-1" />
-                                  <p className="text-xs text-muted-foreground mt-1">{progress}%</p>
+                                  <agent.icon className={`w-5 h-5 mx-auto mb-2 ${
+                                    status === 'completed' ? 'text-green-500' :
+                                    status === 'running' ? 'text-primary animate-pulse' :
+                                    'text-muted-foreground'
+                                  }`} />
+                                  <p className="text-xs font-medium">{agent.name}</p>
+                                  {status === 'running' && (
+                                    <p className="text-[10px] text-muted-foreground mt-1">{progress}%</p>
+                                  )}
                                 </motion.div>
                               );
                             })}
                           </div>
-
-                          {jobStatus?.status === 'completed' && (
-                            <motion.div
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              className="mt-6 p-4 bg-green-500/10 border border-green-500/30 rounded-lg flex items-center gap-3"
-                            >
-                              <CheckCircle2 className="w-6 h-6 text-green-400" />
-                              <div>
-                                <p className="font-medium text-green-400">Documentation Complete!</p>
-                                <p className="text-sm text-muted-foreground">
-                                  Generated documentation for {jobStatus.total_files} files.
-                                </p>
-                              </div>
-                            </motion.div>
-                          )}
-
-                          {jobStatus?.status === 'failed' && (
-                            <motion.div
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              className="mt-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg flex items-center gap-3"
-                            >
-                              <AlertCircle className="w-6 h-6 text-red-400" />
-                              <div>
-                                <p className="font-medium text-red-400">Generation Failed</p>
-                                <p className="text-sm text-muted-foreground">
-                                  {jobStatus.error || 'An error occurred during documentation generation.'}
-                                </p>
-                              </div>
-                            </motion.div>
-                          )}
                         </CardContent>
                       </Card>
                     </motion.div>
                   )}
                 </AnimatePresence>
-
-                {/* Recent Repositories */}
-                <Card className="bg-card border-white/5">
-                  <CardHeader className="flex flex-row items-center justify-between">
-                    <div>
-                      <CardTitle>Recent Repositories</CardTitle>
-                      <CardDescription>Your connected repositories</CardDescription>
-                    </div>
-                    <Link to="/repositories">
-                      <Button variant="ghost" size="sm" className="gap-2">
-                        View All <ArrowRight className="w-4 h-4" />
-                      </Button>
-                    </Link>
-                  </CardHeader>
-                  <CardContent>
-                    {repositories.length === 0 ? (
-                      <div className="text-center py-8">
-                        <FolderGit2 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                        <p className="text-muted-foreground mb-4">No repositories connected</p>
-                        <Link to="/repositories">
-                          <Button>Connect Repository</Button>
-                        </Link>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        {repositories.map((repo) => (
-                          <div key={repo.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center">
-                                <Github className="w-5 h-5 text-primary" />
-                              </div>
-                              <div>
-                                <p className="font-medium">{repo.name}</p>
-                                <p className="text-xs text-muted-foreground">{repo.language} • {repo.branch}</p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline" className="text-xs">
-                                {repo.coverage_percentage || 0}% coverage
-                              </Badge>
-                              <Button variant="ghost" size="icon" onClick={() => window.open(repo.repo_url, '_blank')}>
-                                <ExternalLink className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
               </div>
 
-              {/* Right Column - Activity Feed */}
-              <div className="space-y-6">
-                {/* Activity Feed */}
-                <Card className="bg-card border-white/5">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Activity className="w-5 h-5 text-primary" />
-                      Recent Activity
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ScrollArea className="h-[300px]">
-                      <div className="space-y-4">
-                        {activityFeed.map((activity) => (
-                          <div key={activity.id} className="flex items-start gap-3">
-                            <div className={`w-8 h-8 rounded-full bg-muted flex items-center justify-center`}>
-                              <activity.icon className={`w-4 h-4 ${activity.color}`} />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm">{activity.message}</p>
-                              {activity.time && (
-                                <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                                  <Clock className="w-3 h-3" /> {activity.time}
-                                </p>
-                              )}
-                            </div>
+              {/* Activity Feed */}
+              <Card className="bg-card border-border">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base font-semibold flex items-center gap-2">
+                    <Activity className="w-4 h-4" />
+                    Recent Activity
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <ScrollArea className="h-[400px]">
+                    <div className="px-6 pb-6 space-y-1">
+                      {activityFeed.map((activity, index) => (
+                        <motion.div
+                          key={activity.id}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: index * 0.05 }}
+                          className="activity-item flex items-start gap-3 p-3 rounded-lg"
+                        >
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                            activity.type === 'complete' ? 'bg-green-500/10' :
+                            activity.type === 'error' ? 'bg-red-500/10' :
+                            'bg-primary/10'
+                          }`}>
+                            <activity.icon className={`w-4 h-4 ${activity.color}`} />
                           </div>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  </CardContent>
-                </Card>
-
-                {/* Recent Documentation */}
-                <Card className="bg-card border-white/5">
-                  <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle className="text-base">Recent Documentation</CardTitle>
-                    <Link to="/documentation">
-                      <Button variant="ghost" size="sm">
-                        View All
-                      </Button>
-                    </Link>
-                  </CardHeader>
-                  <CardContent>
-                    {recentDocs.length === 0 ? (
-                      <div className="text-center py-4 text-muted-foreground text-sm">
-                        No documentation generated yet
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        {recentDocs.slice(0, 4).map((doc) => (
-                          <Link key={doc.id} to={`/documentation/${doc.id}`}>
-                            <div className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors">
-                              <div className="flex items-center gap-2 min-w-0">
-                                <FileText className="w-4 h-4 text-primary flex-shrink-0" />
-                                <span className="text-sm truncate">{doc.component_path}</span>
-                              </div>
-                              <Badge variant="outline" className="text-xs ml-2">
-                                {doc.quality_score?.toFixed(0) || 0}%
-                              </Badge>
-                            </div>
-                          </Link>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* AI Models Status */}
-                <Card className="bg-card border-white/5">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-base">
-                      <Cpu className="w-5 h-5 text-primary" />
-                      AI Models
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {[
-                        { name: 'Reader Agent', model: 'CodeT5+ 16B', status: 'active' },
-                        { name: 'Writer Agent', model: 'StarCoder2 15B', status: 'active' },
-                        { name: 'Verifier Agent', model: 'Llama 3.1 8B', status: 'active' },
-                      ].map((agent, idx) => (
-                        <div key={idx} className="flex items-center justify-between p-2 bg-muted/30 rounded-lg">
-                          <div>
-                            <p className="text-sm font-medium">{agent.name}</p>
-                            <p className="text-xs text-muted-foreground">{agent.model}</p>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm">{activity.message}</p>
+                            {activity.time && (
+                              <p className="text-xs text-muted-foreground mt-0.5">{activity.time}</p>
+                            )}
                           </div>
-                          <div className="flex items-center gap-1">
-                            <div className="w-2 h-2 bg-green-400 rounded-full" />
-                            <span className="text-xs text-green-400">Active</span>
-                          </div>
-                        </div>
+                        </motion.div>
                       ))}
                     </div>
-                    <Link to="/models">
-                      <Button variant="outline" size="sm" className="w-full mt-4 border-white/10">
-                        Manage Models
-                      </Button>
-                    </Link>
-                  </CardContent>
-                </Card>
-              </div>
+                  </ScrollArea>
+                </CardContent>
+              </Card>
             </div>
+
+            {/* Quick Actions */}
+            <Card className="bg-card border-border">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base font-semibold">Quick Actions</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {[
+                    { icon: Plus, label: 'Connect Repository', path: '/repositories', color: 'bg-primary/10 text-primary' },
+                    { icon: Zap, label: 'Generate Docs', path: '/generate', color: 'bg-green-500/10 text-green-500' },
+                    { icon: BarChart3, label: 'View Analytics', path: '/analytics', color: 'bg-purple-500/10 text-purple-500' },
+                    { icon: Shield, label: 'Admin Panel', path: '/admin', color: 'bg-amber-500/10 text-amber-500' },
+                  ].map((action) => (
+                    <Link key={action.label} to={action.path}>
+                      <div className="flex items-center gap-3 p-4 rounded-xl border border-border hover:border-primary/50 hover:bg-muted/50 transition-all group cursor-pointer">
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${action.color}`}>
+                          <action.icon className="w-5 h-5" />
+                        </div>
+                        <span className="font-medium text-sm group-hover:text-primary transition-colors">{action.label}</span>
+                        <ArrowRight className="w-4 h-4 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </main>
       </div>
 
-      {/* Document Preview Modal */}
-      <DocumentPreviewModal
-        isOpen={showPreviewModal}
-        onClose={() => setShowPreviewModal(false)}
-        documentation={documentation}
-        repoName={jobStatus?.repo_name || 'Repository'}
-        onExport={handleExportDocx}
-      />
+      {/* Preview Modal */}
+      {showPreviewModal && documentation && (
+        <DocumentPreviewModal
+          isOpen={showPreviewModal}
+          onClose={() => setShowPreviewModal(false)}
+          documentation={documentation}
+          repoName={jobStatus?.repo_name}
+          onExport={handleExportDocx}
+        />
+      )}
     </div>
   );
 };
