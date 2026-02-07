@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -10,12 +11,15 @@ import {
   Zap,
   BarChart3,
   Shield,
-  Cpu
+  ChevronLeft,
+  ChevronRight,
+  Sparkles
 } from 'lucide-react';
 
 const Sidebar = () => {
   const { user } = useAuth();
   const location = useLocation();
+  const [collapsed, setCollapsed] = useState(false);
 
   const navItems = [
     { path: '/dashboard', icon: Home, label: 'Dashboard' },
@@ -32,17 +36,48 @@ const Sidebar = () => {
   }
 
   return (
-    <aside className="w-64 border-r border-white/5 bg-card/50 flex flex-col">
-      <div className="p-6 border-b border-white/5">
-        <Link to="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center">
-            <FileText className="w-5 h-5 text-white" />
+    <motion.aside
+      initial={false}
+      animate={{ width: collapsed ? 72 : 256 }}
+      transition={{ duration: 0.2, ease: 'easeInOut' }}
+      className="border-r border-border bg-card flex flex-col relative"
+    >
+      {/* Toggle Button */}
+      <button
+        onClick={() => setCollapsed(!collapsed)}
+        className="absolute -right-3 top-20 z-10 w-6 h-6 bg-card border border-border rounded-full flex items-center justify-center hover:bg-muted transition-colors"
+      >
+        {collapsed ? (
+          <ChevronRight className="w-3 h-3" />
+        ) : (
+          <ChevronLeft className="w-3 h-3" />
+        )}
+      </button>
+
+      {/* Logo */}
+      <div className="p-4 border-b border-border">
+        <Link to="/" className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center flex-shrink-0">
+            <FileText className="w-5 h-5 text-primary-foreground" />
           </div>
-          <span className="font-heading font-bold text-xl">DocAgent</span>
+          <AnimatePresence mode="wait">
+            {!collapsed && (
+              <motion.span
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                transition={{ duration: 0.15 }}
+                className="font-bold text-xl tracking-tight"
+              >
+                DocAgent
+              </motion.span>
+            )}
+          </AnimatePresence>
         </Link>
       </div>
 
-      <nav className="flex-1 p-4">
+      {/* Navigation */}
+      <nav className="flex-1 p-3">
         <ul className="space-y-1">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path || 
@@ -52,14 +87,26 @@ const Sidebar = () => {
                 <Link
                   to={item.path}
                   data-testid={`nav-${item.label.toLowerCase()}`}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${
                     isActive 
-                      ? 'bg-primary/10 text-primary' 
-                      : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
+                      ? 'bg-primary text-primary-foreground shadow-sm' 
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                   }`}
                 >
-                  <item.icon className="w-5 h-5" />
-                  <span className="font-medium">{item.label}</span>
+                  <item.icon className={`w-5 h-5 flex-shrink-0 ${isActive ? '' : ''}`} />
+                  <AnimatePresence mode="wait">
+                    {!collapsed && (
+                      <motion.span
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -10 }}
+                        transition={{ duration: 0.15 }}
+                        className="font-medium text-sm"
+                      >
+                        {item.label}
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
                 </Link>
               </li>
             );
@@ -67,18 +114,46 @@ const Sidebar = () => {
         </ul>
       </nav>
 
-      <div className="p-4 border-t border-white/5">
-        <div className="bg-muted/50 rounded-lg p-4">
-          <p className="text-sm font-medium text-foreground mb-1">Current Plan</p>
-          <p className="text-xs text-muted-foreground capitalize">{user?.subscription_tier || 'Free'} Tier</p>
-          <Link to="/pricing">
-            <Button variant="outline" size="sm" className="w-full mt-3 border-white/10">
-              Upgrade
-            </Button>
-          </Link>
-        </div>
+      {/* Upgrade Section */}
+      <div className="p-3 border-t border-border">
+        <AnimatePresence mode="wait">
+          {!collapsed ? (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="bg-muted rounded-xl p-4"
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles className="w-4 h-4 text-primary" />
+                <p className="text-sm font-semibold text-foreground">Current Plan</p>
+              </div>
+              <p className="text-xs text-muted-foreground capitalize mb-3">
+                {user?.subscription_tier || 'Free'} Tier
+              </p>
+              <Link to="/pricing">
+                <Button size="sm" className="w-full h-8 text-xs font-medium">
+                  Upgrade Plan
+                </Button>
+              </Link>
+            </motion.div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex justify-center"
+            >
+              <Link to="/pricing">
+                <Button size="icon" variant="ghost" className="w-10 h-10">
+                  <Sparkles className="w-5 h-5 text-primary" />
+                </Button>
+              </Link>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
-    </aside>
+    </motion.aside>
   );
 };
 
