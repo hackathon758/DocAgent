@@ -95,20 +95,20 @@ const TopBar = ({ title }) => {
         {/* Notifications */}
         <Popover open={showNotifications} onOpenChange={setShowNotifications}>
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="icon" className="relative" data-testid="notifications-btn">
+            <Button variant="ghost" size="icon" className="relative h-9 w-9" data-testid="notifications-btn">
               <Bell className="w-5 h-5" />
               {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary rounded-full flex items-center justify-center text-xs font-medium">
+                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-primary rounded-full flex items-center justify-center text-[10px] font-medium text-primary-foreground">
                   {unreadCount}
                 </span>
               )}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-80 p-0" align="end">
-            <div className="p-4 border-b border-white/5 flex items-center justify-between">
-              <h3 className="font-medium">Notifications</h3>
+          <PopoverContent className="w-80 p-0 border-border" align="end">
+            <div className="p-4 border-b border-border flex items-center justify-between">
+              <h3 className="font-semibold">Notifications</h3>
               {notifications.length > 0 && (
-                <Button variant="ghost" size="sm" onClick={clearAllNotifications} className="text-xs h-7">
+                <Button variant="ghost" size="sm" onClick={clearAllNotifications} className="text-xs h-7 text-muted-foreground hover:text-foreground">
                   Clear all
                 </Button>
               )}
@@ -120,7 +120,7 @@ const TopBar = ({ title }) => {
                   <p className="text-sm">No notifications</p>
                 </div>
               ) : (
-                <div className="divide-y divide-white/5">
+                <div className="divide-y divide-border">
                   {notifications.map((notification) => (
                     <div 
                       key={notification.id}
