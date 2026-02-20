@@ -1,0 +1,148 @@
+{
+  "identity": {
+    "name": "DocAgent",
+    "persona": "The Performance Pro + Electric Future",
+    "vibe": "Technical, Precise, Magical, Efficient",
+    "archetype": "Dark Mode Developer Tool",
+    "principles": [
+      "Fusion over Imitation: Mix Swiss Grid precision with Cyberpunk glow.",
+      "Content is King: Code and Documentation are the heroes.",
+      "Zoom In: Focus on the details of the code and the clarity of the docs.",
+      "Negative Space: Give the code room to breathe."
+    ]
+  },
+  "typography": {
+    "fonts": {
+      "heading": {
+        "family": "Outfit, sans-serif",
+        "weights": ["500", "700"],
+        "usage": "Headings, Hero Text, Feature Titles"
+      },
+      "body": {
+        "family": "Manrope, sans-serif",
+        "weights": ["400", "500"],
+        "usage": "Paragraphs, UI Labels, Navigation"
+      },
+      "code": {
+        "family": "JetBrains Mono, monospace",
+        "weights": ["400"],
+        "usage": "Code Blocks, API Keys, Technical Data"
+      }
+    },
+    "scale": {
+      "h1": "text-5xl md:text-7xl font-bold tracking-tight",
+      "h2": "text-3xl md:text-5xl font-semibold tracking-tight",
+      "h3": "text-2xl md:text-3xl font-medium",
+      "body": "text-base leading-relaxed text-muted-foreground",
+      "small": "text-sm font-medium text-muted-foreground uppercase tracking-wider"
+    }
+  },
+  "colors": {
+    "palette": {
+      "background": "#0A0A0A",
+      "foreground": "#EDEDED",
+      "card": "#121212",
+      "card-foreground": "#FFFFFF",
+      "popover": "#121212",
+      "popover-foreground": "#FFFFFF",
+      "primary": "#3B82F6",
+      "primary-foreground": "#FFFFFF",
+      "secondary": "#262626",
+      "secondary-foreground": "#FFFFFF",
+      "muted": "#1F1F1F",
+      "muted-foreground": "#A1A1AA",
+      "accent": "#8B5CF6",
+      "accent-foreground": "#FFFFFF",
+      "destructive": "#EF4444",
+      "destructive-foreground": "#FFFFFF",
+      "border": "#262626",
+      "input": "#262626",
+      "ring": "#3B82F6"
+    },
+    "gradients": {
+      "hero": "bg-gradient-to-r from-blue-600 to-purple-600",
+      "glow": "bg-blue-500/20 blur-3xl"
+    },
+    "chart": {
+      "1": "#3B82F6",
+      "2": "#8B5CF6",
+      "3": "#10B981",
+      "4": "#F59E0B",
+      "5": "#EF4444"
+    }
+  },
+  "layout": {
+    "spacing": {
+      "container": "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8",
+      "section": "py-24 md:py-32",
+      "card_padding": "p-6 md:p-8"
+    },
+    "grid": {
+      "dashboard": "grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6",
+      "marketing": "grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-12"
+    },
+    "radius": {
+      "default": "0.5rem",
+      "card": "0.75rem",
+      "button": "9999px"
+    }
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-primary text-primary-foreground hover:bg-primary/90 rounded-full px-8 py-6 text-lg font-medium transition-all hover:scale-105 shadow-[0_0_20px_rgba(59,130,246,0.5)]",
+      "secondary": "bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-full px-6 py-4 font-medium border border-white/10",
+      "ghost": "hover:bg-white/5 text-foreground rounded-full px-4 py-2"
+    },
+    "cards": {
+      "default": "bg-card border border-white/5 rounded-xl shadow-2xl hover:border-primary/50 transition-colors duration-300",
+      "glass": "bg-black/40 backdrop-blur-xl border border-white/10 rounded-xl"
+    },
+    "inputs": {
+      "default": "bg-input border-transparent focus:border-primary focus:ring-1 focus:ring-primary rounded-lg h-12 px-4 text-foreground placeholder:text-muted-foreground/50"
+    }
+  },
+  "motion": {
+    "library": "framer-motion",
+    "presets": {
+      "fade_in": {
+        "initial": { "opacity": 0, "y": 20 },
+        "animate": { "opacity": 1, "y": 0 },
+        "transition": { "duration": 0.5 }
+      },
+      "stagger_container": {
+        "hidden": { "opacity": 0 },
+        "show": {
+          "opacity": 1,
+          "transition": { "staggerChildren": 0.1 }
+        }
+      },
+      "hover_lift": {
+        "whileHover": { "y": -5 }
+      }
+    }
+  },
+  "assets": {
+    "icons": "lucide-react",
+    "images": {
+      "hero_background": "https://images.unsplash.com/photo-1750969185331-e03829f72c7d?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "coding_screen": "https://images.unsplash.com/photo-1759661881353-5b9cc55e1cf4?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "data_viz": "https://images.unsplash.com/photo-1551288049-bebda4e38f71?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "team_meeting": "https://images.unsplash.com/photo-1760611656007-f767a8082758?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "avatars": [
+        "https://images.unsplash.com/photo-1615843423179-bea071facf96?crop=entropy&cs=srgb&fm=jpg&q=85",
+        "https://images.unsplash.com/photo-1688587571105-c770775b2b42?crop=entropy&cs=srgb&fm=jpg&q=85"
+      ]
+    }
+  },
+  "universal_guidelines": [
+    "Dark Mode Only: The app is strictly dark mode. Do not implement a light mode toggle.",
+    "No Gradients on Text: Keep text solid for readability.",
+    "Glassmorphism: Use backdrop-blur-xl for sticky headers and overlays.",
+    "Borders: Use 1px borders with 5-10% opacity (white/10) for subtle separation.",
+    "Shadows: Use colored shadows (primary color) for active states to create a 'glow' effect.",
+    "Data-Testid: All interactive elements must have a data-testid attribute.",
+    "Spacing: Use generous padding (py-24, py-32) for marketing sections.",
+    "Contrast: Ensure text is legible against dark backgrounds (use text-gray-300 for body, white for headings)."
+  ],
+  "instructions_to_main_agent": "1. Install 'lucide-react', 'framer-motion', 'clsx', 'tailwind-merge'. 2. Update 'tailwind.config.js' with the colors provided in this JSON. 3. Create a 'layout.tsx' that enforces the dark theme background. 4. Use the provided image URLs for the landing page and dashboard placeholders. 5. Implement the 'Bento Grid' layout for the dashboard overview."
+}
